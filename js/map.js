@@ -122,11 +122,18 @@ window.NivraMap = (function createNivraMap() {
 
         markers.forEach((marker, index) => {
             if (marker.latitude == null || marker.longitude == null) return;
-            const point = [marker.latitude, marker.longitude];
+            // Spread pins that share nearly the same spot so none hide under another.
+            const angle = (index / Math.max(markers.length, 1)) * Math.PI * 2;
+            const jitter = index === 0 ? 0 : 0.00035 + (index % 3) * 0.00012;
+            const point = [
+                marker.latitude + Math.sin(angle) * jitter,
+                marker.longitude + Math.cos(angle) * jitter,
+            ];
             bounds.push(point);
             const pin = L.marker(point, {
                 icon: pinIcon(String(index + 1).padStart(2, "0"), marker.ownerListed),
                 title: marker.name,
+                zIndexOffset: index === 0 ? 400 : index * 10,
             });
             pin.bindPopup(
                 `<strong>${marker.name}</strong><br>` +

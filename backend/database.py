@@ -138,6 +138,16 @@ def init_db(connection: sqlite3.Connection | None = None) -> None:
         else:
             expand_rohtak_catalog(db)
             db.commit()
+
+        # Keep hosted DBs (Render) in sync with the rich Rohtak catalog after code updates.
+        medicine_count = db.execute("SELECT COUNT(*) AS c FROM medicines").fetchone()["c"]
+        rohtak_count = db.execute(
+            "SELECT COUNT(*) AS c FROM pharmacies WHERE pincode LIKE '124%'"
+        ).fetchone()["c"]
+        if medicine_count < 80 or rohtak_count < 8:
+            expand_rohtak_catalog(db)
+            db.commit()
+
         if not db.execute("SELECT id FROM activity_log LIMIT 1").fetchone():
             log_activity(db, None, "system", "network.ready", "system", None, "Nivra network database is ready.")
             db.commit()

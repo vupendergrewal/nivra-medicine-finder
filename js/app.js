@@ -99,11 +99,13 @@ function currentResults() {
     return inventory;
 }
 
+const MAP_RADIUS_KM = 50;
+
 async function loadInventory() {
     const query = state.query || "";
     const location = elements.heroLocation?.value || "Rohtak 124001";
     const data = await API.request(
-        `/api/search?q=${encodeURIComponent(query)}&location=${encodeURIComponent(location)}&filter=${encodeURIComponent(state.filter)}`
+        `/api/search?q=${encodeURIComponent(query)}&location=${encodeURIComponent(location)}&filter=${encodeURIComponent(state.filter)}&radius=${MAP_RADIUS_KM}`
     );
     inventory = data.results || [];
     if (!inventory.some((item) => item.id === state.activeCard)) {
@@ -159,6 +161,39 @@ function updateSaltGuide(guide) {
 
 async function syncLiveMap(query, location) {
     if (!window.NivraMap) return;
+
+    function markersFromInventory(items) {
+        const byPharmacy = new Map();
+        (items || []).forEach((item) => {
+            const coords = item.coordinates || {};
+            if (coords.latitude == null || coords.longitude == null) return;
+            const pharmacyId = item.pharmacyId;
+            const existing = byPharmacy.get(pharmacyId);
+            if (!existing || (item.match || 0) > (existing.match || 0)) {
+                byPharmacy.set(pharmacyId, {
+                    pharmacyId,
+                    inventoryId: item.id,
+                    name: item.pharmacy,
+                    area: item.area,
+                    distance: item.distance,
+                    medicine: item.medicine,
+                    brand: item.brand,
+                    strength: item.strength,
+                    stock: item.stock,
+                    packs: item.packs,
+                    price: item.price,
+                    coldChain: item.coldChain,
+                    ownerListed: item.ownerListed,
+                    match: item.match,
+                    latitude: coords.latitude,
+                    longitude: coords.longitude,
+                    hours: item.hours,
+                });
+            }
+        });
+        return Array.from(byPharmacy.values()).sort((a, b) => a.distance - b.distance);
+    }
+
     try {
         if (!window.NivraMap.ready()) {
             await window.NivraMap.init("cityMap", {
@@ -172,24 +207,28 @@ async function syncLiveMap(query, location) {
             });
         }
         const mapData = await API.request(
-            `/api/map?q=${encodeURIComponent(query || "")}&location=${encodeURIComponent(location || "Rohtak 124001")}&filter=${encodeURIComponent(state.filter)}&radius=25`
+            `/api/map?q=${encodeURIComponent(query || "")}&location=${encodeURIComponent(location || "Rohtak 124001")}&filter=${encodeURIComponent(state.filter)}&radius=${MAP_RADIUS_KM}`
         );
+        // Prefer one pin per pharmacy from the same listings the cards use,
+        // so the map count always matches the result list.
+        const markersFromResults = markersFromInventory(inventory);
+        const markers = markersFromResults.length ? markersFromResults : mapData.markers || [];
         window.NivraMap.queuePayload({
             origin: mapData.origin,
-            radiusKm: mapData.radiusKm || 25,
-            markers: mapData.markers || [],
+            radiusKm: MAP_RADIUS_KM,
+            markers,
             activeId: state.activeCard,
         });
 
         const matchLabel = document.querySelector("#mapMatchCount");
         if (matchLabel) {
-            matchLabel.textContent = `${mapData.count} pharmacy pin${mapData.count === 1 ? "" : "s"} nearby`;
+            matchLabel.textContent = `${markers.length} pharmacy pin${markers.length === 1 ? "" : "s"} within ${MAP_RADIUS_KM} km`;
         }
         const hint = document.querySelector("#mapHint");
         if (hint) {
             const origin = mapData.origin || {};
             hint.textContent = origin.resolved
-                ? `Centered on ${origin.label} · live map tiles`
+                ? `Centered on ${origin.label} · pins match the list`
                 : `Using Rohtak fallback · live map tiles`;
         }
     } catch (error) {
