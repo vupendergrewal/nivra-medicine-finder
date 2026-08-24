@@ -783,16 +783,24 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
     <script src="js/motion.js"></script>
-    <script src="js/scene.js" defer></script>
-    <script src="js/map.js" defer></script>
-    <script src="js/app.js" defer></script>
+    <script src="js/scene.js"></script>
+    <script src="js/map.js"></script>
+    <script src="js/app.js"></script>
     <script>
-        // Load OCR only when the user uploads a prescription (keeps first paint fast).
+        // Failsafe: never leave the "Locating certainty" screen stuck.
+        window.setTimeout(() => {
+            const loader = document.querySelector("#pageLoader");
+            if (!loader || !document.body.classList.contains("loading")) return;
+            document.body.classList.remove("loading");
+            loader.remove();
+        }, 3500);
+
+        // Load OCR only when the user uploads a prescription.
         window.NivraLoadOcr = function () {
             if (window.Tesseract) return Promise.resolve();
             if (window.__nivraOcrPromise) return window.__nivraOcrPromise;

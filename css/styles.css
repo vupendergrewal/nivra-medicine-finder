@@ -2982,6 +2982,16 @@ html.reduce-motion *::after {
     transition-duration: 0.01ms !important;
 }
 
+/* Keep the boot loader usable even when motion is reduced. */
+html.reduce-motion .page-loader,
+html.reduce-motion .page-loader *,
+html.reduce-motion .loader-mark,
+html.reduce-motion .loader-track span {
+    animation-duration: 1.8s !important;
+    animation-iteration-count: infinite !important;
+    transition-duration: 0.2s !important;
+}
+
 html.reduce-motion .reveal,
 html.reduce-motion .hero-reveal {
     opacity: 1 !important;

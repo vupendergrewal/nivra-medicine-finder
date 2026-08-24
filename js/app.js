@@ -1264,6 +1264,8 @@ function initFeedback() {
         }
     });
 }
+
+function initActivityFeed() {
     const feed = document.querySelector("#activityFeed");
     if (!feed) return;
     API.request("/api/activity")
@@ -1508,38 +1510,51 @@ function initPageLoader() {
     const loader = document.querySelector("#pageLoader");
     const bar = document.querySelector("#loaderProgress");
     const percent = document.querySelector("#loaderPercent");
+    if (!loader || !bar || !percent) {
+        document.body.classList.remove("loading");
+        return;
+    }
+
     let value = 0;
+    let finished = false;
 
-    const timer = window.setInterval(() => {
-        const remaining = 100 - value;
-        value += Math.max(1, Math.ceil(remaining * 0.12));
-        value = Math.min(value, 100);
-        bar.style.width = `${value}%`;
-        percent.textContent = `${value}%`;
-
-        if (value < 100) return;
+    function finish() {
+        if (finished) return;
+        finished = true;
         window.clearInterval(timer);
+        value = 100;
+        bar.style.width = "100%";
+        percent.textContent = "100%";
         window.setTimeout(() => {
             document.body.classList.remove("loading");
             if (typeof gsap !== "undefined") {
                 gsap.to(loader, {
                     yPercent: -100,
-                    duration: 0.9,
-                    ease: "power4.inOut",
+                    duration: 0.55,
+                    ease: "power3.inOut",
                     onComplete: () => {
                         loader.remove();
                         if (window.NivraMap) window.NivraMap.invalidate();
                     },
                 });
             } else {
-                loader.style.animation = "loaderOut .8s ease forwards";
-                loader.addEventListener("animationend", () => {
-                    loader.remove();
-                    if (window.NivraMap) window.NivraMap.invalidate();
-                });
+                loader.remove();
+                if (window.NivraMap) window.NivraMap.invalidate();
             }
-        }, 180);
-    }, 22);
+        }, 120);
+    }
+
+    const timer = window.setInterval(() => {
+        const remaining = 100 - value;
+        value += Math.max(2, Math.ceil(remaining * 0.18));
+        value = Math.min(value, 100);
+        bar.style.width = `${value}%`;
+        percent.textContent = `${value}%`;
+        if (value >= 100) finish();
+    }, 18);
+
+    // Absolute failsafe if something else blocks the interval.
+    window.setTimeout(finish, 2800);
 }
 
 function initMagneticButtons() {
@@ -1557,7 +1572,7 @@ function initMagneticButtons() {
     });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+function boot() {
     initPageLoader();
     initMotionControls();
     initNavigation();
@@ -1576,4 +1591,10 @@ document.addEventListener("DOMContentLoaded", () => {
     initSurfaceEffects();
     initScrollProgress();
     initMagneticButtons();
-});
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+} else {
+    boot();
+}
