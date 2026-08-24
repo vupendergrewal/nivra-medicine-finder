@@ -1,19 +1,8 @@
 window.NivraMotion = (function createMotionPref() {
-    const KEY = "nivra-motion";
+    const KEY = "nivra-motion-v2";
 
     function systemPrefersReduce() {
         return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    }
-
-    function weakDevice() {
-        try {
-            if (navigator.connection && navigator.connection.saveData) return true;
-            if (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) return true;
-            if (navigator.deviceMemory && navigator.deviceMemory <= 4) return true;
-        } catch {
-            /* ignore */
-        }
-        return false;
     }
 
     function stored() {
@@ -24,9 +13,8 @@ window.NivraMotion = (function createMotionPref() {
         const value = stored();
         if (value === "on") return true;
         if (value === "off") return false;
-        // Prefer a smooth classroom demo. Users can turn Motion on from the nav.
-        if (systemPrefersReduce() || weakDevice()) return false;
-        return false;
+        // Demo default: keep motion on so the site feels alive.
+        return true;
     }
 
     function apply() {
@@ -50,5 +38,5 @@ window.NivraMotion = (function createMotionPref() {
 
     if (document.documentElement) apply();
 
-    return { enabled, set, toggle, apply, systemPrefersReduce, stored, weakDevice };
+    return { enabled, set, toggle, apply, systemPrefersReduce, stored };
 })();

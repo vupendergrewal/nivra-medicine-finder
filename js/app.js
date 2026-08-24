@@ -1363,7 +1363,21 @@ function initMotion() {
         return;
     }
 
-    // Lenis smooth-scroll removed — it lagged on institute laptops.
+    if (typeof Lenis !== "undefined") {
+        const lenis = new Lenis({
+            duration: 1.05,
+            smoothWheel: true,
+            wheelMultiplier: 0.9,
+        });
+        function raf(time) {
+            lenis.raf(time);
+            requestAnimationFrame(raf);
+        }
+        requestAnimationFrame(raf);
+        if (typeof ScrollTrigger !== "undefined" && typeof lenis.on === "function") {
+            lenis.on("scroll", ScrollTrigger.update);
+        }
+    }
 
     if (typeof gsap === "undefined") {
         document.querySelectorAll(".reveal, .hero-reveal").forEach((element) => {
@@ -1377,41 +1391,159 @@ function initMotion() {
 
     gsap.fromTo(
         ".hero-reveal",
-        { y: 28, opacity: 0 },
+        { y: 56, opacity: 0 },
         {
             y: 0,
             opacity: 1,
-            duration: 0.65,
-            stagger: 0.07,
-            ease: "power2.out",
-            delay: 0.05,
+            duration: 1.05,
+            stagger: 0.11,
+            ease: "power3.out",
+            delay: 0.2,
+        }
+    );
+
+    gsap.fromTo(
+        ".floating-chip",
+        { y: 24, opacity: 0, scale: 0.92 },
+        {
+            y: 0,
+            opacity: 1,
+            scale: 1,
+            duration: 0.9,
+            stagger: 0.12,
+            ease: "power3.out",
+            delay: 0.55,
         }
     );
 
     gsap.utils.toArray(".reveal").forEach((element) => {
         gsap.fromTo(
             element,
-            { y: 22, opacity: 0 },
+            { y: 44, opacity: 0 },
             {
                 y: 0,
                 opacity: 1,
-                duration: 0.5,
-                ease: "power2.out",
+                duration: 0.95,
+                ease: "power3.out",
                 scrollTrigger: {
                     trigger: element,
-                    start: "top 90%",
+                    start: "top 88%",
                     once: true,
                 },
             }
         );
     });
+
+    gsap.utils.toArray(".section-heading h2, .statement-copy h2, .urgent-copy h2").forEach((heading) => {
+        gsap.fromTo(
+            heading,
+            { clipPath: "inset(0 0 100% 0)", y: 55 },
+            {
+                clipPath: "inset(0 0 0% 0)",
+                y: 0,
+                duration: 1.1,
+                ease: "power4.out",
+                scrollTrigger: {
+                    trigger: heading,
+                    start: "top 84%",
+                    once: true,
+                },
+            }
+        );
+    });
+
+    [
+        ".statement-numbers > div",
+        ".process-step",
+        ".guide-card",
+        ".trust-line > span",
+    ].forEach((selector) => {
+        const items = gsap.utils.toArray(selector);
+        if (!items.length) return;
+        gsap.fromTo(
+            items,
+            { y: 34, opacity: 0 },
+            {
+                y: 0,
+                opacity: 1,
+                duration: 0.75,
+                stagger: 0.1,
+                ease: "power3.out",
+                scrollTrigger: {
+                    trigger: items[0].parentElement,
+                    start: "top 82%",
+                    once: true,
+                },
+            }
+        );
+    });
+
+    gsap.to(".hero-marquee", {
+        rotation: 1.4,
+        ease: "none",
+        scrollTrigger: {
+            trigger: ".hero",
+            start: "top top",
+            end: "bottom top",
+            scrub: true,
+        },
+    });
+
+    gsap.to(".process-core", {
+        scale: 1.1,
+        boxShadow: "0 0 0 38px rgba(255,255,255,.09), 0 30px 80px rgba(30,10,75,.36)",
+        ease: "sine.inOut",
+        scrollTrigger: {
+            trigger: ".process-stage",
+            start: "top 70%",
+            end: "bottom 45%",
+            scrub: true,
+        },
+    });
+
+    gsap.to(".hero-copy", {
+        yPercent: 16,
+        opacity: 0.4,
+        ease: "none",
+        scrollTrigger: {
+            trigger: ".hero",
+            start: "top top",
+            end: "bottom top",
+            scrub: true,
+        },
+    });
+
+    gsap.to(".hero-glow", {
+        scale: 1.18,
+        opacity: 0.85,
+        ease: "none",
+        scrollTrigger: {
+            trigger: ".hero",
+            start: "top top",
+            end: "bottom top",
+            scrub: true,
+        },
+    });
+
+    if (document.querySelector(".status-card-main")) {
+        gsap.to(".status-card-main", {
+            y: -18,
+            ease: "none",
+            scrollTrigger: {
+                trigger: ".hero",
+                start: "top top",
+                end: "bottom top",
+                scrub: true,
+            },
+        });
+    }
 }
 
 function initCursor() {
     if (!window.matchMedia("(pointer: fine)").matches) return;
-    if (window.NivraMotion && !window.NivraMotion.enabled()) return;
     const cursor = document.querySelector(".cursor-dot");
     const aura = document.querySelector(".cursor-aura");
+    if (!cursor || !aura) return;
     let mouseX = window.innerWidth / 2;
     let mouseY = window.innerHeight / 2;
     let auraX = mouseX;
