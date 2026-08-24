@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nivra Admin Desk</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="admin-page">
+    <div class="admin-wrap">
+        <div class="admin-top">
+            <div>
+                <p class="section-index">NIVRA CONTROL</p>
+                <h1>Admin desk</h1>
+                <p class="admin-subtitle" id="adminGreeting">Verify pharmacies, confirm holds, and keep the medicine network trustworthy.</p>
+            </div>
+            <div class="admin-top-actions">
+                <a class="nav-owner" href="/">Public site</a>
+                <a class="nav-owner" href="/owner">Owner desk</a>
+                <button class="nav-urgent" type="button" id="adminRefresh" hidden>Refresh</button>
+                <button class="nav-urgent" type="button" id="adminSignOut">Sign out</button>
+            </div>
+        </div>
+
+        <section class="admin-login-card" id="adminLoginCard">
+            <div class="admin-login-copy">
+                <p class="section-index">HOW TO SIGN IN</p>
+                <h2>Use the admin account to open the control desk.</h2>
+                <ol class="admin-steps">
+                    <li>Open this page: <code>/admin</code></li>
+                    <li>Email: <code>admin@nivra.local</code></li>
+                    <li>Password: <code>admin123</code></li>
+                    <li>Click <strong>Enter admin desk</strong></li>
+                </ol>
+                <p class="admin-note">
+                    Only the admin role can verify pharmacies. Customer and owner accounts will be blocked here on purpose.
+                </p>
+            </div>
+
+            <form class="dialog-shell admin-login" id="adminLogin">
+                <p class="section-index">ADMIN ACCESS</p>
+                <h2>Sign in</h2>
+                <label for="adminEmail">Email</label>
+                <input id="adminEmail" type="email" value="admin@nivra.local" autocomplete="username" required>
+                <label for="adminPassword">Password</label>
+                <input id="adminPassword" type="password" value="admin123" autocomplete="current-password" required>
+                <button class="search-submit" type="submit">Enter admin desk</button>
+                <p class="dialog-message" id="adminLoginMessage" role="status"></p>
+            </form>
+        </section>
+
+        <div id="adminApp" hidden>
+            <div class="admin-grid" id="adminStats"></div>
+
+            <div class="admin-tabs" role="tablist">
+                <button class="filter active" type="button" data-admin-tab="pharmacies">Pharmacies</button>
+                <button class="filter" type="button" data-admin-tab="reservations">Reservations</button>
+                <button class="filter" type="button" data-admin-tab="urgent">Urgent</button>
+                <button class="filter" type="button" data-admin-tab="lowstock">Low stock</button>
+                <button class="filter" type="button" data-admin-tab="activity">Activity</button>
+                <button class="filter" type="button" data-admin-tab="users">Users</button>
+                <button class="filter" type="button" data-admin-tab="feedback">Feedback</button>
+            </div>
+
+            <div class="admin-panels">
+                <section class="admin-panel" data-panel="pharmacies">
+                    <div class="admin-panel-head">
+                        <div>
+                            <small>Trust layer</small>
+                            <h2>Pharmacy verification</h2>
+                        </div>
+                        <button class="filter" type="button" id="expireHolds">Expire stale holds</button>
+                    </div>
+                    <div id="adminPharmacies"></div>
+                </section>
+
+                <section class="admin-panel" data-panel="reservations" hidden>
+                    <div class="admin-panel-head">
+                        <div>
+                            <small>Customer holds</small>
+                            <h2>Reservations</h2>
+                        </div>
+                    </div>
+                    <div id="adminReservations"></div>
+                </section>
+
+                <section class="admin-panel" data-panel="urgent" hidden>
+                    <div class="admin-panel-head">
+                        <div>
+                            <small>Network broadcasts</small>
+                            <h2>Urgent requests</h2>
+                        </div>
+                    </div>
+                    <div id="adminUrgent"></div>
+                </section>
+
+                <section class="admin-panel" data-panel="lowstock" hidden>
+                    <div class="admin-panel-head">
+                        <div>
+                            <small>Scarcity watch</small>
+                            <h2>Low stock alerts</h2>
+                        </div>
+                    </div>
+                    <div id="adminLowStock"></div>
+                </section>
+
+                <section class="admin-panel" data-panel="activity" hidden>
+                    <div class="admin-panel-head">
+                        <div>
+                            <small>Audit trail</small>
+                            <h2>Live activity</h2>
+                        </div>
+                    </div>
+                    <div id="adminActivity"></div>
+                </section>
+
+                <section class="admin-panel" data-panel="users" hidden>
+                    <div class="admin-panel-head">
+                        <div>
+                            <small>Accounts</small>
+                            <h2>Users</h2>
+                        </div>
+                    </div>
+                    <div id="adminUsers"></div>
+                </section>
+
+                <section class="admin-panel" data-panel="feedback" hidden>
+                    <div class="admin-panel-head">
+                        <div>
+                            <small>Public notes</small>
+                            <h2>Feedback</h2>
+                        </div>
+                    </div>
+                    <div id="adminFeedback"></div>
+                </section>
+            </div>
+
+            <aside class="admin-detail" id="adminDetail" hidden>
+                <div class="admin-panel-head">
+                    <div>
+                        <small>Pharmacy detail</small>
+                        <h2 id="detailTitle">Inventory</h2>
+                    </div>
+                    <button class="filter" type="button" id="closeDetail">Close</button>
+                </div>
+                <div id="detailBody"></div>
+            </aside>
+        </div>
+    </div>
+
+    <script src="js/admin.js"></script>
+</body>
+</html>

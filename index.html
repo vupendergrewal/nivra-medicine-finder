@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Nivra helps people find verified medicine availability nearby, compare alternatives, and reserve urgent stock.">
+    <meta name="theme-color" content="#18151e">
+    <title>Nivra — Find the medicine. Not another dead end.</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="js/motion.js"></script>
+</head>
+<body>
+    <div class="page-loader" id="pageLoader" aria-hidden="true">
+        <div class="loader-mark">
+            <span class="loader-capsule loader-capsule-left"></span>
+            <span class="loader-capsule loader-capsule-right"></span>
+        </div>
+        <div class="loader-copy">
+            <span>Nivra</span>
+            <small>Locating certainty</small>
+        </div>
+        <div class="loader-track"><span id="loaderProgress"></span></div>
+        <strong class="loader-percent" id="loaderPercent">0%</strong>
+    </div>
+
+    <div class="scroll-progress" aria-hidden="true">
+        <span id="scrollProgress"></span>
+    </div>
+
+    <div class="cursor-dot" aria-hidden="true"></div>
+    <div class="cursor-aura" aria-hidden="true"></div>
+    <div class="noise" aria-hidden="true"></div>
+
+    <header class="site-header">
+        <nav class="nav shell">
+            <a class="brand" href="#top" aria-label="Nivra home">
+                <span class="brand-glyph" aria-hidden="true">
+                    <span></span>
+                    <span></span>
+                </span>
+                <span>Nivra</span>
+            </a>
+
+            <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+                <span></span>
+                <span></span>
+            </button>
+
+            <div class="nav-menu">
+                <a href="#finder">Find medicine</a>
+                <a href="#how">How it works</a>
+                <a href="#safety">Medicine guide</a>
+                <button class="nav-owner" type="button" data-open-auth="login" id="authNavButton">Sign in</button>
+                <button class="nav-create" type="button" data-open-auth="register" id="createAccountNav">Create account</button>
+                <button class="nav-owner" type="button" data-open-owner>List your pharmacy</button>
+                <button class="nav-motion" type="button" id="motionToggle" aria-pressed="true" title="Toggle animations">Motion on</button>
+                <a class="nav-owner" id="ownerNavLink" href="/owner" hidden>Owner desk</a>
+                <a class="nav-owner" id="adminNavLink" href="/admin" hidden>Admin desk</a>
+                <button class="nav-urgent" type="button" data-open-emergency>
+                    <span class="status-dot"></span>
+                    Urgent request
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <main id="top">
+        <section class="hero">
+            <canvas id="medicineScene" aria-hidden="true"></canvas>
+            <div class="hero-glow" aria-hidden="true"></div>
+
+            <div class="shell hero-grid">
+                <div class="hero-copy">
+                    <p class="eyebrow hero-reveal">
+                        <span class="status-dot"></span>
+                        Live medicine discovery
+                    </p>
+                    <h1 class="hero-reveal">
+                        Find the medicine.
+                        <em>Not another dead end.</em>
+                    </h1>
+                    <p class="hero-lede hero-reveal">
+                        Search verified stock nearby, compare safe generic alternatives,
+                        and reserve critical medicines before you leave home.
+                    </p>
+
+                    <form class="hero-search hero-reveal" id="heroSearch">
+                        <div class="search-field medicine-field">
+                            <label for="heroMedicine">Medicine or salt</label>
+                            <input id="heroMedicine" name="medicine" type="search" autocomplete="off"
+                                placeholder="e.g. Insulin Glargine" required>
+                            <button class="voice-button" type="button" id="voiceSearchButton"
+                                aria-label="Search medicine by voice" title="Search by voice">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <rect x="8" y="3" width="8" height="12" rx="4"></rect>
+                                    <path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"></path>
+                                </svg>
+                                <span class="voice-wave"><i></i><i></i><i></i></span>
+                            </button>
+                        </div>
+                        <div class="search-field location-field">
+                            <label for="heroLocation">Area or PIN code</label>
+                            <input id="heroLocation" name="location" type="text"
+                                placeholder="e.g. Rohtak 124001" value="Rohtak 124001" required>
+                            <button class="locate-button" type="button" id="locateButton" aria-label="Use my location">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z"></path>
+                                    <circle cx="12" cy="9" r="2.5"></circle>
+                                </svg>
+                            </button>
+                        </div>
+                        <button class="search-submit magnetic" type="submit">
+                            <span>Search nearby</span>
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="m5 12 14 0m-5-5 5 5-5 5"></path>
+                            </svg>
+                        </button>
+                    </form>
+
+                    <div class="quick-search hero-reveal" aria-label="Quick medicine searches">
+                        <span>Common searches</span>
+                        <button type="button" data-quick-search="Insulin Glargine">Insulin</button>
+                        <button type="button" data-quick-search="Adrenaline">Adrenaline</button>
+                        <button type="button" data-quick-search="Osimertinib">Cancer care</button>
+                    </div>
+                </div>
+
+                <aside class="hero-status hero-reveal" aria-label="Live network status">
+                    <div class="status-card status-card-main">
+                        <div class="status-card-head">
+                            <span>Live network pulse</span>
+                            <span class="live-badge"><i></i> Live</span>
+                        </div>
+                        <div class="pulse-map" aria-hidden="true">
+                            <span class="map-line map-line-one"></span>
+                            <span class="map-line map-line-two"></span>
+                            <span class="map-line map-line-three"></span>
+                            <i class="map-node node-one"></i>
+                            <i class="map-node node-two"></i>
+                            <i class="map-node node-three"></i>
+                            <i class="map-node node-four"></i>
+                            <span class="pulse-core"></span>
+                        </div>
+                        <div class="network-metrics">
+                            <div>
+                                <strong data-counter="6" data-format="number">0</strong>
+                                <span>Pharmacies online</span>
+                            </div>
+                            <div>
+                                <strong data-counter="96" data-format="percent">0</strong>
+                                <span>Stock verified today</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="floating-chip chip-verified">
+                        <span class="chip-icon">✓</span>
+                        <span><small>Last verified</small>2 minutes ago</span>
+                    </div>
+                    <div class="floating-chip chip-distance">
+                        <span class="chip-icon">↗</span>
+                        <span><small>Nearest match</small>1.4 km away</span>
+                    </div>
+                </aside>
+            </div>
+
+            <div class="hero-marquee" aria-hidden="true">
+                <div class="marquee-track">
+                    <span>Verified availability</span><i></i>
+                    <span>Generic alternatives</span><i></i>
+                    <span>Cold-chain visibility</span><i></i>
+                    <span>Reserve before travel</span><i></i>
+                    <span>Verified availability</span><i></i>
+                    <span>Generic alternatives</span><i></i>
+                    <span>Cold-chain visibility</span><i></i>
+                    <span>Reserve before travel</span><i></i>
+                </div>
+            </div>
+        </section>
+
+        <section class="problem-statement section-pad">
+            <div class="shell statement-grid">
+                <p class="section-index reveal">01 / THE PROBLEM</p>
+                <div class="statement-copy">
+                    <h2 class="reveal">
+                        A prescription should not become
+                        <span class="serif-accent">a city-wide search.</span>
+                    </h2>
+                    <p class="reveal">
+                        Families still call pharmacy after pharmacy, travel without confirmation,
+                        and lose critical time. Nivra turns fragmented availability into one calm,
+                        clear decision.
+                    </p>
+                    <div class="statement-numbers reveal">
+                        <div>
+                            <strong>41 min</strong>
+                            <span>average time lost calling stores</span>
+                        </div>
+                        <div>
+                            <strong>3.7 trips</strong>
+                            <span>before scarce stock is found</span>
+                        </div>
+                        <div>
+                            <strong>1 search</strong>
+                            <span>with Nivra</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="rx-lens section-pad" id="rxLens">
+            <div class="shell">
+                <div class="section-heading reveal">
+                    <div>
+                        <p class="section-index">02 / RX LENS</p>
+                        <h2>Let the prescription <span class="serif-accent">speak.</span></h2>
+                    </div>
+                    <p>Upload a prescription image. Rx Lens reads printed text locally and turns detected medicines into searchable chips.</p>
+                </div>
+
+                <div class="rx-grid">
+                    <div class="rx-scanner reveal">
+                        <input id="prescriptionInput" type="file" accept="image/*" hidden>
+                        <button class="upload-zone" id="uploadZone" type="button">
+                            <span class="upload-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M12 16V4m0 0L7 9m5-5 5 5"></path>
+                                    <path d="M5 14v5h14v-5"></path>
+                                </svg>
+                            </span>
+                            <strong>Drop a prescription here</strong>
+                            <span>or choose JPG / PNG from your device</span>
+                        </button>
+
+                        <div class="scan-viewport" id="scanViewport" hidden>
+                            <img id="prescriptionPreview" alt="Selected prescription preview">
+                            <span class="scan-beam" aria-hidden="true"></span>
+                            <span class="scan-corner corner-one"></span>
+                            <span class="scan-corner corner-two"></span>
+                            <span class="scan-corner corner-three"></span>
+                            <span class="scan-corner corner-four"></span>
+                        </div>
+
+                        <div class="scan-controls">
+                            <button class="scan-demo-button" id="demoScanButton" type="button">
+                                <span>◎</span>
+                                Try demo prescription
+                            </button>
+                            <span class="private-note">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <rect x="5" y="10" width="14" height="10" rx="2"></rect>
+                                    <path d="M8 10V7a4 4 0 0 1 8 0v3"></path>
+                                </svg>
+                                Processed in your browser
+                            </span>
+                        </div>
+                    </div>
+
+                    <aside class="rx-output reveal">
+                        <div class="rx-output-head">
+                            <div>
+                                <small>Rx Lens status</small>
+                                <strong id="scanStatus">Ready to scan</strong>
+                            </div>
+                            <span class="scan-state" id="scanState"><i></i> Idle</span>
+                        </div>
+
+                        <div class="scan-progress">
+                            <span id="scanProgress"></span>
+                        </div>
+
+                        <div class="rx-empty" id="rxEmpty">
+                            <div class="rx-orbit" aria-hidden="true">
+                                <span></span>
+                                <i></i>
+                            </div>
+                            <p>Detected medicines will appear here as searchable results.</p>
+                        </div>
+
+                        <div class="detected-results" id="detectedResults" hidden>
+                            <p class="detected-label">Detected on prescription</p>
+                            <div class="medicine-chips" id="medicineChips"></div>
+                            <div class="confidence-panel">
+                                <div>
+                                    <span>Text confidence</span>
+                                    <strong id="ocrConfidence">—</strong>
+                                </div>
+                                <div>
+                                    <span>Lines examined</span>
+                                    <strong id="ocrLines">—</strong>
+                                </div>
+                            </div>
+                            <p class="scan-caution">
+                                Always confirm medicine name, strength, and dosage with your doctor or pharmacist.
+                            </p>
+                        </div>
+                    </aside>
+                </div>
+            </div>
+        </section>
+
+        <section class="finder section-pad" id="finder">
+            <div class="shell">
+                <div class="section-heading reveal">
+                    <div>
+                        <p class="section-index">03 / LIVE FINDER</p>
+                        <h2>Available near <span id="finderArea">Rohtak</span></h2>
+                    </div>
+                    <p>Sample live inventory. Choose a medicine, distance, or availability state.</p>
+                </div>
+
+                <div class="finder-toolbar reveal">
+                    <div class="finder-search">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <circle cx="11" cy="11" r="7"></circle>
+                            <path d="m16 16 4 4"></path>
+                        </svg>
+                        <input id="finderInput" type="search" placeholder="Search medicine, brand, or salt">
+                    </div>
+                    <div class="filter-group" aria-label="Availability filters">
+                        <button class="filter active" type="button" data-filter="all">All</button>
+                        <button class="filter" type="button" data-filter="in-stock">In stock</button>
+                        <button class="filter" type="button" data-filter="low-stock">Low stock</button>
+                        <button class="filter" type="button" data-filter="cold-chain">Cold chain</button>
+                    </div>
+                </div>
+
+                <div class="results-layout">
+                    <div class="pharmacy-results reveal" id="pharmacyResults" aria-live="polite"></div>
+
+                    <aside class="result-map reveal">
+                        <div class="map-top">
+                            <span id="mapMatchCount">Loading map…</span>
+                            <div class="map-top-actions">
+                                <button type="button" id="locateOnMap">My location</button>
+                                <button type="button" id="recenterMap">Recenter</button>
+                            </div>
+                        </div>
+                        <div class="city-map live-map" id="cityMap" aria-label="Live pharmacy map"></div>
+                        <div class="map-legend">
+                            <span><i class="legend-user"></i>You</span>
+                            <span><i class="legend-stock"></i>Verified stock</span>
+                            <span><i class="legend-pending"></i>Pending</span>
+                        </div>
+                        <p class="map-hint" id="mapHint">Pins use live pharmacy coordinates from the Nivra network.</p>
+                    </aside>
+                </div>
+            </div>
+        </section>
+
+        <section class="how section-pad" id="how">
+            <div class="shell">
+                <div class="section-heading reveal">
+                    <div>
+                        <p class="section-index">04 / THE FLOW</p>
+                        <h2>Search. Verify. <span class="serif-accent">Breathe.</span></h2>
+                    </div>
+                </div>
+
+                <div class="process-stage">
+                    <div class="process-visual reveal" aria-hidden="true">
+                        <div class="orbit orbit-outer">
+                            <span class="orbit-dot dot-one"></span>
+                            <span class="orbit-dot dot-two"></span>
+                        </div>
+                        <div class="orbit orbit-inner">
+                            <span class="orbit-dot dot-three"></span>
+                        </div>
+                        <div class="process-core">
+                            <span>N</span>
+                        </div>
+                        <div class="process-caption">
+                            <small>Current step</small>
+                            <strong id="processCaption">Search precisely</strong>
+                        </div>
+                    </div>
+
+                    <div class="process-list">
+                        <article class="process-step active reveal" data-process="Search precisely">
+                            <span>01</span>
+                            <div>
+                                <h3>Search by medicine or salt</h3>
+                                <p>Find the exact prescription, strength, and dosage form without guessing brand names.</p>
+                            </div>
+                        </article>
+                        <article class="process-step reveal" data-process="Confirm confidence">
+                            <span>02</span>
+                            <div>
+                                <h3>See verified confidence</h3>
+                                <p>Know when stock was last confirmed, pack quantity, cold-chain status, and distance.</p>
+                            </div>
+                        </article>
+                        <article class="process-step reveal" data-process="Reserve calmly">
+                            <span>03</span>
+                            <div>
+                                <h3>Reserve before you travel</h3>
+                                <p>Hold a pack briefly, share prescription details, and leave only after confirmation.</p>
+                            </div>
+                        </article>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="safety section-pad" id="safety">
+            <div class="shell">
+                <div class="section-heading reveal">
+                    <div>
+                        <p class="section-index">05 / MEDICINE INTELLIGENCE</p>
+                        <h2>More than a stock signal.</h2>
+                    </div>
+                    <p>Understand alternatives, storage, and essential cautions before choosing a pharmacy.</p>
+                </div>
+
+                <div class="guide-grid">
+                    <article class="guide-card guide-feature reveal">
+                        <div class="guide-label">Generic alternative</div>
+                        <h3>Same salt. Clearer choice.</h3>
+                        <p>
+                            See medically equivalent options by active ingredient, strength, and form.
+                            Brand substitutions should always be confirmed by a qualified professional.
+                        </p>
+                        <div class="salt-compare" id="saltCompare">
+                            <div>
+                                <small>Prescribed / searched</small>
+                                <strong id="saltPrescribedBrand">Lantus SoloStar</strong>
+                                <span id="saltPrescribedDetail">Insulin Glargine · 100 IU/ml</span>
+                                <span class="salt-chip" id="saltLabelChip">Salt: Insulin Glargine</span>
+                            </div>
+                            <span class="compare-arrow">↔</span>
+                            <div>
+                                <small>Same-salt suggestions</small>
+                                <strong id="saltAltBrand">Basaglar · Toujeo</strong>
+                                <span id="saltAltDetail">Other brands with the same active salt</span>
+                                <ul class="salt-alt-list" id="saltAltList"></ul>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="guide-card reveal">
+                        <div class="guide-icon temperature-icon" aria-hidden="true">°</div>
+                        <div class="guide-label">Cold-chain safety</div>
+                        <h3>Temperature visibility</h3>
+                        <p>Cold-chain medicines display storage confidence and pharmacy handling status.</p>
+                        <div class="temperature-bar">
+                            <span></span>
+                            <strong>2–8°C</strong>
+                        </div>
+                    </article>
+
+                    <article class="guide-card reveal">
+                        <div class="guide-icon" aria-hidden="true">Rx</div>
+                        <div class="guide-label">Prescription care</div>
+                        <h3>Clear safety signals</h3>
+                        <p>Prescription-required products are marked before reservation to avoid a wasted trip.</p>
+                        <span class="safety-pill">Prescription required</span>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="urgent section-pad">
+            <div class="shell urgent-card reveal">
+                <div class="urgent-copy">
+                    <p class="section-index">CAN'T FIND IT?</p>
+                    <h2>Send one request.<br><span class="serif-accent">Reach the network.</span></h2>
+                    <p>
+                        Broadcast an urgent medicine request to verified stores in your selected radius.
+                        You stay in control of which contact details are shared.
+                    </p>
+                </div>
+                <button class="urgent-orb magnetic" type="button" data-open-emergency>
+                    <span>Send urgent<br>request</span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="m5 12 14 0m-5-5 5 5-5 5"></path>
+                    </svg>
+                </button>
+            </div>
+        </section>
+
+        <section class="feedback section-pad" id="feedback">
+            <div class="shell feedback-grid reveal">
+                <div>
+                    <p class="section-index">SHARE FEEDBACK</p>
+                    <h2>Tell Nivra what still feels hard.</h2>
+                    <p>Your note helps improve search, verification, and urgent coverage for the next demo.</p>
+                </div>
+                <form class="feedback-form" id="feedbackForm">
+                    <label for="feedbackName">Name</label>
+                    <input id="feedbackName" type="text" placeholder="Your name" required>
+                    <label for="feedbackEmail">Email (optional)</label>
+                    <input id="feedbackEmail" type="email" placeholder="you@email.com">
+                    <label for="feedbackMessage">Message</label>
+                    <textarea id="feedbackMessage" rows="4" placeholder="What should Nivra improve?" required></textarea>
+                    <button class="search-submit" type="submit">Send feedback</button>
+                    <p class="dialog-message" id="feedbackMessageStatus" role="status"></p>
+                </form>
+            </div>
+        </section>
+
+        <section class="trust section-pad">
+            <div class="shell">
+                <p class="section-index reveal">DESIGNED FOR THE MOMENT THAT MATTERS</p>
+                <div class="trust-line reveal">
+                    <span>Verified timestamps</span>
+                    <i></i>
+                    <span>Privacy-first requests</span>
+                    <i></i>
+                    <span>Pharmacist confirmation</span>
+                    <i></i>
+                    <span>Accessible search</span>
+                </div>
+                <div class="activity-feed reveal" id="activityFeed" aria-live="polite"></div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="shell footer-grid">
+            <div>
+                <a class="brand footer-brand" href="#top">
+                    <span class="brand-glyph" aria-hidden="true"><span></span><span></span></span>
+                    <span>Nivra</span>
+                </a>
+                <p>Find critical medicine availability with less uncertainty and fewer wasted journeys.</p>
+            </div>
+            <div class="footer-links">
+                <a href="#finder">Find medicine</a>
+                <a href="#how">How it works</a>
+                <a href="#safety">Medicine guide</a>
+                <a href="/owner">Owner desk</a>
+                <a href="/admin">Admin desk</a>
+                <button type="button" data-open-owner>List your pharmacy</button>
+                <button type="button" data-open-emergency>Urgent request</button>
+            </div>
+            <div class="footer-note">
+                <p>Availability is time-sensitive. Always confirm dosage and substitution with a qualified medical professional.</p>
+                <span>© 2026 Nivra</span>
+            </div>
+        </div>
+    </footer>
+
+    <dialog class="reservation-dialog" id="authDialog">
+        <form class="dialog-shell auth-shell" id="authForm">
+            <button class="dialog-close" type="button" data-close-dialog aria-label="Close">×</button>
+            <p class="section-index">NIVRA ACCOUNT</p>
+            <h2 id="authTitle">Sign in</h2>
+            <p id="authCopy">Use your Nivra account to reserve medicines or manage a pharmacy.</p>
+
+            <div class="auth-mode" role="tablist" aria-label="Account mode">
+                <button class="filter active" type="button" data-auth-mode="login" role="tab" aria-selected="true">Sign in</button>
+                <button class="filter" type="button" data-auth-mode="register" role="tab" aria-selected="false">Create account</button>
+            </div>
+
+            <div class="auth-register-fields" id="authRegisterFields" hidden>
+                <label for="authName" id="authNameLabel">Full name</label>
+                <input id="authName" type="text" placeholder="Your name" autocomplete="name">
+
+                <label for="authPhone" id="authPhoneLabel">Mobile number</label>
+                <input id="authPhone" type="tel" inputmode="numeric" placeholder="10-digit number" autocomplete="tel">
+
+                <label for="authRole" id="authRoleLabel">Account type</label>
+                <select id="authRole">
+                    <option value="customer">Customer — search and reserve</option>
+                    <option value="owner">Pharmacy owner — list stock</option>
+                </select>
+            </div>
+
+            <label for="authEmail">Email</label>
+            <input id="authEmail" type="email" placeholder="you@email.com" autocomplete="email" required>
+
+            <label for="authPassword">Password</label>
+            <input id="authPassword" type="password" placeholder="At least 6 characters" autocomplete="current-password" required>
+
+            <button class="search-submit" type="submit" id="authSubmit">Sign in</button>
+            <p class="auth-switch" id="authSwitch">
+                New here?
+                <button type="button" data-auth-mode="register">Create a free account</button>
+            </p>
+            <p class="dialog-message" id="authMessage" role="status" aria-live="polite"></p>
+            <p class="auth-hint">Demo: customer@nivra.local / customer123 · owner@nivra.local / owner123 · admin@nivra.local / admin123</p>
+        </form>
+    </dialog>
+
+    <dialog class="reservation-dialog" id="reservationDialog">
+        <form method="dialog" class="dialog-shell" id="reservationForm">
+            <button class="dialog-close" type="button" data-close-dialog aria-label="Close">×</button>
+            <p class="section-index">RESERVE MEDICINE</p>
+            <h2 id="reservationTitle">Reserve your medicine</h2>
+            <p id="reservationPharmacy">The pharmacy will confirm before your reservation window begins.</p>
+
+            <div class="reservation-summary" id="reservationSummary"></div>
+
+            <label for="reserveName">Your name</label>
+            <input id="reserveName" type="text" placeholder="Full name" required>
+
+            <label for="reservePhone">Mobile number</label>
+            <input id="reservePhone" type="tel" inputmode="numeric" placeholder="10-digit mobile number" required>
+
+            <label class="consent-row">
+                <input id="reserveConsent" type="checkbox" required>
+                <span>I understand that final dispensing depends on prescription and pharmacist verification.</span>
+            </label>
+
+            <button class="search-submit" type="submit">Request reservation</button>
+            <p class="dialog-message" id="reservationMessage" role="status" aria-live="polite"></p>
+        </form>
+    </dialog>
+
+    <dialog class="emergency-dialog" id="emergencyDialog">
+        <form method="dialog" class="dialog-shell" id="emergencyForm">
+            <button class="dialog-close" type="button" data-close-dialog aria-label="Close">×</button>
+            <p class="section-index">URGENT NETWORK REQUEST</p>
+            <h2>What medicine do you need?</h2>
+            <p>Your request is prepared for nearby verified pharmacies.</p>
+
+            <label for="emergencyMedicine">Medicine and strength</label>
+            <input id="emergencyMedicine" type="text" placeholder="e.g. Adrenaline 1 mg/ml" required>
+
+            <label for="emergencyLocation">Area or PIN code</label>
+            <input id="emergencyLocation" type="text" placeholder="e.g. Sector 17, Chandigarh" required>
+
+            <label for="emergencyRadius">Search radius</label>
+            <select id="emergencyRadius">
+                <option>5 km</option>
+                <option selected>10 km</option>
+                <option>25 km</option>
+                <option>50 km</option>
+            </select>
+
+            <button class="search-submit" type="submit">Prepare urgent request</button>
+            <p class="dialog-message" id="emergencyMessage" role="status" aria-live="polite"></p>
+        </form>
+    </dialog>
+
+    <dialog class="owner-dialog" id="ownerDialog">
+        <form method="dialog" class="owner-shell" id="ownerForm">
+            <button class="dialog-close" type="button" data-close-dialog aria-label="Close">×</button>
+
+            <div class="owner-heading">
+                <p class="section-index">NIVRA FOR PHARMACIES</p>
+                <h2>Put your pharmacy on the map.</h2>
+                <p>Add your store, capture its location, and publish medicines with clear stock information.</p>
+            </div>
+
+            <div class="owner-progress" aria-label="Listing steps">
+                <span class="active"><i>1</i>Store</span>
+                <span><i>2</i>Location</span>
+                <span><i>3</i>Inventory</span>
+            </div>
+
+            <div class="owner-grid">
+                <section class="owner-fields">
+                    <div class="owner-section-head">
+                        <span>01</span>
+                        <div>
+                            <h3>Store identity</h3>
+                            <p>Details customers use to recognise and contact you.</p>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <label>
+                            Pharmacy name
+                            <input id="ownerPharmacyName" type="text" placeholder="e.g. Sunrise Pharmacy" required>
+                        </label>
+                        <label>
+                            Drug licence number
+                            <input id="ownerLicense" type="text" placeholder="e.g. CHD/20B/12345" required>
+                        </label>
+                        <label>
+                            Contact number
+                            <input id="ownerPhone" type="tel" inputmode="numeric" placeholder="10-digit number" required>
+                        </label>
+                        <label>
+                            Opening hours
+                            <select id="ownerHours">
+                                <option>8:00 AM – 10:00 PM</option>
+                                <option>9:00 AM – 9:00 PM</option>
+                                <option>Open 24 hours</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="owner-section-head">
+                        <span>02</span>
+                        <div>
+                            <h3>Store location</h3>
+                            <p>Capture current location or enter the full address manually.</p>
+                        </div>
+                    </div>
+
+                    <label>
+                        Full address
+                        <textarea id="ownerAddress" rows="2" placeholder="Shop number, market, sector, city" required></textarea>
+                    </label>
+
+                    <div class="location-capture">
+                        <label>
+                            PIN code
+                            <input id="ownerPincode" type="text" inputmode="numeric" maxlength="6" placeholder="160017" required>
+                        </label>
+                        <button class="location-capture-button" id="captureOwnerLocation" type="button">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z"></path>
+                                <circle cx="12" cy="9" r="2.5"></circle>
+                            </svg>
+                            Use shop location
+                        </button>
+                    </div>
+                    <p class="location-status" id="ownerLocationStatus">Location not captured yet.</p>
+                </section>
+
+                <section class="inventory-studio">
+                    <div class="owner-section-head">
+                        <span>03</span>
+                        <div>
+                            <h3>Medicine inventory</h3>
+                            <p>Add one or more products before publishing.</p>
+                        </div>
+                    </div>
+
+                    <div class="inventory-builder">
+                        <label>
+                            Medicine / salt
+                            <input id="ownerMedicine" type="text" placeholder="Insulin Glargine">
+                        </label>
+                        <label>
+                            Brand
+                            <input id="ownerBrand" type="text" placeholder="Lantus SoloStar">
+                        </label>
+                        <label>
+                            Strength and pack
+                            <input id="ownerStrength" type="text" placeholder="100 IU/ml · 3 ml">
+                        </label>
+                        <div class="inventory-row">
+                            <label>
+                                Packs
+                                <input id="ownerStock" type="number" min="0" max="999" value="1">
+                            </label>
+                            <label>
+                                Price
+                                <input id="ownerPrice" type="number" min="0" placeholder="784">
+                            </label>
+                        </div>
+                        <div class="inventory-checks">
+                            <label>
+                                <input id="ownerColdChain" type="checkbox">
+                                <span>Cold-chain (2–8°C)</span>
+                            </label>
+                            <label>
+                                <input id="ownerPrescription" type="checkbox" checked>
+                                <span>Prescription required</span>
+                            </label>
+                        </div>
+                        <button class="add-product-button" id="addOwnerProduct" type="button">
+                            <span>＋</span>
+                            Add product
+                        </button>
+                    </div>
+
+                    <div class="owner-product-list" id="ownerProductList">
+                        <p>No medicines added yet.</p>
+                    </div>
+
+                    <div class="owner-publish">
+                        <div>
+                            <small>Verification note</small>
+                            <p>Your listing appears as pending until licence and stock details are checked.</p>
+                        </div>
+                        <button class="search-submit" type="submit">Publish listing</button>
+                    </div>
+                    <p class="dialog-message" id="ownerMessage" role="status" aria-live="polite"></p>
+                </section>
+            </div>
+        </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" defer></script>
+    <script src="js/motion.js"></script>
+    <script src="js/scene.js" defer></script>
+    <script src="js/map.js" defer></script>
+    <script src="js/app.js" defer></script>
+    <script>
+        // Load OCR only when the user uploads a prescription (keeps first paint fast).
+        window.NivraLoadOcr = function () {
+            if (window.Tesseract) return Promise.resolve();
+            if (window.__nivraOcrPromise) return window.__nivraOcrPromise;
+            window.__nivraOcrPromise = new Promise((resolve, reject) => {
+                const script = document.createElement("script");
+                script.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+            return window.__nivraOcrPromise;
+        };
+    </script>
+</body>
+</html>

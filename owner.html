@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nivra Owner Desk</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="admin-page">
+    <div class="admin-wrap">
+        <div class="admin-top">
+            <div>
+                <p class="section-index">NIVRA FOR PHARMACIES</p>
+                <h1>Owner desk</h1>
+                <p class="admin-subtitle">Confirm reservations, refresh stock, and watch urgent requests near you.</p>
+            </div>
+            <div class="admin-top-actions">
+                <a class="nav-owner" href="/">Public site</a>
+                <a class="nav-owner" href="/admin">Admin desk</a>
+                <button class="nav-urgent" type="button" id="ownerSignOut">Sign out</button>
+            </div>
+        </div>
+
+        <section class="admin-login-card" id="ownerLoginCard">
+            <div class="admin-login-copy">
+                <p class="section-index">HOW TO SIGN IN</p>
+                <h2>Pharmacy owners manage stock from here.</h2>
+                <ol class="admin-steps">
+                    <li>Email: <code>owner@nivra.local</code></li>
+                    <li>Password: <code>owner123</code></li>
+                    <li>Or create an owner account from the public site Sign in dialog</li>
+                </ol>
+            </div>
+            <form class="dialog-shell admin-login" id="ownerLogin">
+                <p class="section-index">OWNER ACCESS</p>
+                <h2>Sign in</h2>
+                <label for="ownerEmail">Email</label>
+                <input id="ownerEmail" type="email" value="owner@nivra.local" required>
+                <label for="ownerPassword">Password</label>
+                <input id="ownerPassword" type="password" value="owner123" required>
+                <button class="search-submit" type="submit">Enter owner desk</button>
+                <p class="dialog-message" id="ownerLoginMessage"></p>
+            </form>
+        </section>
+
+        <div id="ownerApp" hidden>
+            <div class="admin-grid" id="ownerStats"></div>
+            <div class="admin-panels">
+                <section class="admin-panel">
+                    <div class="admin-panel-head">
+                        <div>
+                            <small>Your store</small>
+                            <h2 id="ownerPharmacyName">Pharmacy</h2>
+                        </div>
+                        <a class="filter" href="/#top" id="listMoreLink">List another product</a>
+                    </div>
+                    <p id="ownerPharmacyMeta"></p>
+                    <div id="ownerInventory"></div>
+                </section>
+                <section class="admin-panel">
+                    <div class="admin-panel-head">
+                        <div>
+                            <small>Incoming demand</small>
+                            <h2>Reservations</h2>
+                        </div>
+                    </div>
+                    <div id="ownerReservations"></div>
+                </section>
+                <section class="admin-panel">
+                    <div class="admin-panel-head">
+                        <div>
+                            <small>Nearby scarcity</small>
+                            <h2>Open urgent requests</h2>
+                        </div>
+                    </div>
+                    <div id="ownerUrgent"></div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const tokenKey = "nivra-token";
+        const userKey = "nivra-user";
+
+        function token() { return localStorage.getItem(tokenKey) || ""; }
+        function user() {
+            try { return JSON.parse(localStorage.getItem(userKey) || "null"); }
+            catch { return null; }
+        }
+
+        async function api(path, options = {}) {
+            const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+            if (token()) headers.Authorization = `Bearer ${token()}`;
+            const response = await fetch(path, { ...options, headers });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.error || "Request failed.");
+            return data;
+        }
+
+        function chip(status) {
+            return `<span class="admin-chip status-${status}">${status}</span>`;
+        }
+
+        async function loadOwner() {
+            const data = await api("/api/owner/pharmacy");
+            const app = document.querySelector("#ownerApp");
+            const login = document.querySelector("#ownerLoginCard");
+            if (!data.pharmacy) {
+                login.hidden = true;
+                app.hidden = false;
+                document.querySelector("#ownerStats").innerHTML =
+                    `<div class="admin-stat"><strong>0</strong><span>No pharmacy linked yet</span></div>`;
+                document.querySelector("#ownerPharmacyName").textContent = "No pharmacy listed";
+                document.querySelector("#ownerPharmacyMeta").textContent =
+                    "Use List your pharmacy on the public site, then return here.";
+                document.querySelector("#ownerInventory").innerHTML = "";
+                document.querySelector("#ownerReservations").innerHTML = "<p>None yet.</p>";
+                document.querySelector("#ownerUrgent").innerHTML = "<p>None yet.</p>";
+                return;
+            }
+
+            login.hidden = true;
+            app.hidden = false;
+            document.querySelector("#ownerPharmacyName").textContent = data.pharmacy.name;
+            document.querySelector("#ownerPharmacyMeta").innerHTML =
+                `${chip(data.pharmacy.status)} ${data.pharmacy.address} · ${data.pharmacy.pincode} · ${data.pharmacy.hours}`;
+            document.querySelector("#ownerStats").innerHTML = [
+                ["Inventory lines", data.inventory.length],
+                ["Open reservations", data.reservations.filter((item) => ["requested", "confirmed"].includes(item.status)).length],
+                ["Urgent nearby", data.urgent.length],
+                ["Status", data.pharmacy.status],
+            ].map(([label, value]) => `<div class="admin-stat"><strong>${value}</strong><span>${label}</span></div>`).join("");
+
+            document.querySelector("#ownerInventory").innerHTML = data.inventory.map((item) => `
+                <div class="admin-row">
+                    <div><strong>${item.brand}</strong><br><small>${item.medicine} · ${item.strength}</small></div>
+                    <div>${item.packs} packs · ${item.price}</div>
+                    <div class="admin-actions">
+                        <button class="filter" data-verify-stock="${item.id}">Mark verified</button>
+                    </div>
+                </div>
+            `).join("") || "<p>No inventory yet.</p>";
+
+            document.querySelector("#ownerReservations").innerHTML = data.reservations.map((item) => `
+                <div class="admin-row">
+                    <div><strong>${item.brand}</strong><br><small>${item.customer_name} · ${item.phone}</small></div>
+                    <div>${chip(item.status)}</div>
+                    <div class="admin-actions">
+                        ${item.status === "requested" ? `<button class="filter" data-confirm="${item.id}">Confirm</button>` : ""}
+                    </div>
+                </div>
+            `).join("") || "<p>No reservations yet.</p>";
+
+            document.querySelector("#ownerUrgent").innerHTML = data.urgent.map((item) => `
+                <div class="admin-row">
+                    <div><strong>${item.medicine}</strong><br><small>${item.location}</small></div>
+                    <div>${item.radius_km} km</div>
+                    <div class="admin-actions">
+                        <button class="filter" data-resolve="${item.id}">Resolve</button>
+                    </div>
+                </div>
+            `).join("") || "<p>No open urgent requests.</p>";
+        }
+
+        async function boot() {
+            const current = user();
+            if (!current || !["owner", "admin"].includes(current.role) || !token()) {
+                document.querySelector("#ownerLoginCard").hidden = false;
+                document.querySelector("#ownerApp").hidden = true;
+                return;
+            }
+            await loadOwner();
+        }
+
+        document.querySelector("#ownerLogin").addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const message = document.querySelector("#ownerLoginMessage");
+            try {
+                const data = await api("/api/auth/login", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        email: document.querySelector("#ownerEmail").value,
+                        password: document.querySelector("#ownerPassword").value,
+                    }),
+                });
+                if (!["owner", "admin"].includes(data.user.role)) {
+                    throw new Error("Use an owner account. Demo: owner@nivra.local / owner123");
+                }
+                localStorage.setItem(tokenKey, data.token);
+                localStorage.setItem(userKey, JSON.stringify(data.user));
+                await boot();
+            } catch (error) {
+                message.textContent = error.message;
+            }
+        });
+
+        document.querySelector("#ownerSignOut").addEventListener("click", () => {
+            localStorage.removeItem(tokenKey);
+            localStorage.removeItem(userKey);
+            location.reload();
+        });
+
+        document.querySelector("#ownerApp").addEventListener("click", async (event) => {
+            const confirm = event.target.closest("[data-confirm]");
+            const resolve = event.target.closest("[data-resolve]");
+            const verifyStock = event.target.closest("[data-verify-stock]");
+            try {
+                if (confirm) await api(`/api/reservations/${confirm.dataset.confirm}/confirm`, { method: "POST" });
+                if (resolve) {
+                    await api(`/api/urgent/${resolve.dataset.resolve}/resolve`, {
+                        method: "POST",
+                        body: JSON.stringify({ note: "Owner marked this request resolved." }),
+                    });
+                }
+                if (verifyStock) {
+                    await api(`/api/owner/inventory/${verifyStock.dataset.verifyStock}`, {
+                        method: "PATCH",
+                        body: JSON.stringify({ verify: true }),
+                    });
+                }
+                if (confirm || resolve || verifyStock) await loadOwner();
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+
+        boot().catch((error) => {
+            document.querySelector("#ownerLoginMessage").textContent = error.message;
+        });
+    </script>
+</body>
+</html>
