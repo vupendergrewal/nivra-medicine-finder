@@ -44,6 +44,9 @@ const state = {
     filter: "all",
     query: "",
     activeCard: 1,
+    radius: 50,
+    sort: "distance",
+    openNow: false,
 };
 
 const ownerDraftProducts = [];
@@ -95,19 +98,50 @@ function normalize(value) {
     return String(value || "").trim().toLowerCase();
 }
 
-function currentResults() {
-    return inventory;
+function priceValue(item) {
+    const value = Number(String(item.price || "").replace(/[^\d.]/g, ""));
+    return Number.isFinite(value) && value > 0 ? value : Number.POSITIVE_INFINITY;
 }
 
-const MAP_RADIUS_KM = 50;
+function toMinutes(hour, minute, meridiem) {
+    let h = Number(hour) % 12;
+    if (String(meridiem).toUpperCase() === "PM") h += 12;
+    return h * 60 + Number(minute);
+}
+
+function isOpenNow(item) {
+    const hours = String(item.hours || "");
+    if (/24/.test(hours)) return true;
+    const match = hours.match(/(\d{1,2}):(\d{2})\s*(AM|PM)\s*[–-]\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (!match) return true;
+    const now = new Date();
+    const current = now.getHours() * 60 + now.getMinutes();
+    const open = toMinutes(match[1], match[2], match[3]);
+    const close = toMinutes(match[4], match[5], match[6]);
+    return close > open ? current >= open && current <= close : current >= open || current <= close;
+}
+
+function currentResults() {
+    let rows = inventory.slice();
+    if (state.openNow) rows = rows.filter(isOpenNow);
+    if (state.sort === "price") rows.sort((a, b) => priceValue(a) - priceValue(b) || a.distance - b.distance);
+    else if (state.sort === "match") rows.sort((a, b) => (b.match || 0) - (a.match || 0) || a.distance - b.distance);
+    else rows.sort((a, b) => a.distance - b.distance);
+    return rows;
+}
+
+function radiusKm() {
+    return state.radius || 50;
+}
 
 async function loadInventory() {
     const query = state.query || "";
     const location = elements.heroLocation?.value || "Rohtak 124001";
     const data = await API.request(
-        `/api/search?q=${encodeURIComponent(query)}&location=${encodeURIComponent(location)}&filter=${encodeURIComponent(state.filter)}&radius=${MAP_RADIUS_KM}`
+        `/api/search?q=${encodeURIComponent(query)}&location=${encodeURIComponent(location)}&filter=${encodeURIComponent(state.filter)}&radius=${radiusKm()}`
     );
     inventory = data.results || [];
+    if (query.trim().length >= 3) rememberSearch(query.trim());
     if (!inventory.some((item) => item.id === state.activeCard)) {
         state.activeCard = inventory[0]?.id || null;
     }
@@ -207,7 +241,7 @@ async function syncLiveMap(query, location) {
             });
         }
         const mapData = await API.request(
-            `/api/map?q=${encodeURIComponent(query || "")}&location=${encodeURIComponent(location || "Rohtak 124001")}&filter=${encodeURIComponent(state.filter)}&radius=${MAP_RADIUS_KM}`
+            `/api/map?q=${encodeURIComponent(query || "")}&location=${encodeURIComponent(location || "Rohtak 124001")}&filter=${encodeURIComponent(state.filter)}&radius=${radiusKm()}`
         );
         // Prefer one pin per pharmacy from the same listings the cards use,
         // so the map count always matches the result list.
@@ -215,14 +249,14 @@ async function syncLiveMap(query, location) {
         const markers = markersFromResults.length ? markersFromResults : mapData.markers || [];
         window.NivraMap.queuePayload({
             origin: mapData.origin,
-            radiusKm: MAP_RADIUS_KM,
+            radiusKm: radiusKm(),
             markers,
             activeId: state.activeCard,
         });
 
         const matchLabel = document.querySelector("#mapMatchCount");
         if (matchLabel) {
-            matchLabel.textContent = `${markers.length} pharmacy pin${markers.length === 1 ? "" : "s"} within ${MAP_RADIUS_KM} km`;
+            matchLabel.textContent = `${markers.length} pharmacy pin${markers.length === 1 ? "" : "s"} within ${radiusKm()} km`;
         }
         const hint = document.querySelector("#mapHint");
         if (hint) {
@@ -274,12 +308,15 @@ function renderResults() {
         empty.className = "no-results";
         empty.innerHTML = "<strong>No exact match in this sample.</strong><br>Try another medicine or send an urgent network request.";
         elements.results.appendChild(empty);
+        renderInsights([]);
         return;
     }
 
+    const lowestPrice = Math.min(...matches.map(priceValue));
     matches.slice(0, 12).forEach((item, index) => {
+        const cheapest = Number.isFinite(lowestPrice) && priceValue(item) === lowestPrice;
         const card = document.createElement("article");
-        card.className = `pharmacy-card${item.id === state.activeCard ? " active" : ""}`;
+        card.className = `pharmacy-card${item.id === state.activeCard ? " active" : ""}${cheapest ? " is-cheapest" : ""}`;
         card.dataset.id = String(item.id);
 
         const number = document.createElement("span");
@@ -311,6 +348,13 @@ function renderResults() {
         );
         if (item.coldChain) {
             medicineLine.appendChild(createBadge("2–8°C", "cold-badge"));
+        }
+        medicineLine.appendChild(createBadge(
+            isOpenNow(item) ? "Open" : "Closed",
+            isOpenNow(item) ? "stock-badge stock-in" : "pending-badge"
+        ));
+        if (cheapest && Number.isFinite(priceValue(item))) {
+            medicineLine.appendChild(createBadge("Lowest price", "match-badge"));
         }
         if (item.ownerListed) {
             medicineLine.appendChild(createBadge("Pending verification", "pending-badge"));
@@ -367,6 +411,18 @@ function renderResults() {
             openReservation(item);
         });
 
+        const coords = item.coordinates || {};
+        if (coords.latitude != null && coords.longitude != null) {
+            const directions = document.createElement("a");
+            directions.className = "ghost-button";
+            directions.href = `https://www.google.com/maps/dir/?api=1&destination=${coords.latitude},${coords.longitude}`;
+            directions.target = "_blank";
+            directions.rel = "noopener";
+            directions.textContent = "Directions";
+            directions.addEventListener("click", (event) => event.stopPropagation());
+            actions.appendChild(directions);
+        }
+
         actions.append(save, reserve);
         side.append(distance, actions);
         card.append(number, main, side);
@@ -382,8 +438,10 @@ function renderResults() {
         initRipple(reserve);
         initRipple(save);
     });
+    renderInsights(matches);
 
-    if (typeof gsap !== "undefined") {
+    const motionOn = !window.NivraMotion || window.NivraMotion.enabled();
+    if (motionOn && typeof gsap !== "undefined") {
         gsap.fromTo(
             ".pharmacy-card",
             { opacity: 0, x: -18 },
@@ -424,6 +482,7 @@ async function runHeroSearch() {
         const matches = await loadInventory();
         document.querySelector("#finder").scrollIntoView({ behavior: "smooth" });
         showToast(`Showing ${matches.length || "nearby"} matches for ${medicine}.`);
+        rememberSearch(medicine);
         if (window.NivraScene) window.NivraScene.pulse();
     } catch (error) {
         showToast(error.message);
@@ -989,7 +1048,166 @@ function captureLiveLocation(targetInput, { searchAfter = false } = {}) {
     );
 }
 
+function renderInsights(matches) {
+    const row = document.querySelector("#insightRow");
+    if (!row) return;
+    if (!matches.length) {
+        row.innerHTML = "<p>No pharmacies match this filter. Widen the radius or send an urgent request.</p>";
+        return;
+    }
+    const nearest = matches.slice().sort((a, b) => a.distance - b.distance)[0];
+    const priced = matches.filter((item) => Number.isFinite(priceValue(item)));
+    const cheapest = priced.slice().sort((a, b) => priceValue(a) - priceValue(b))[0];
+    const openCount = matches.filter(isOpenNow).length;
+    row.innerHTML = `
+        <article><small>Nearest</small><strong>${nearest.pharmacy}</strong><span>${nearest.distance.toFixed(1)} km · ${nearest.brand}</span></article>
+        <article><small>Lowest price</small><strong>${cheapest ? cheapest.price : "—"}</strong><span>${cheapest ? cheapest.pharmacy : "Price not listed"}</span></article>
+        <article><small>Open now</small><strong>${openCount}</strong><span>of ${matches.length} listed shops</span></article>
+    `;
+}
+
+function readRecentSearches() {
+    try {
+        const items = JSON.parse(localStorage.getItem("nivra-recent") || "[]");
+        return Array.isArray(items) ? items.filter((item) => typeof item === "string") : [];
+    } catch {
+        return [];
+    }
+}
+
+function rememberSearch(query) {
+    const cleaned = String(query || "").trim();
+    if (cleaned.length < 3) return;
+    const previous = readRecentSearches().filter((item) => item.toLowerCase() !== cleaned.toLowerCase());
+    previous.unshift(cleaned);
+    localStorage.setItem("nivra-recent", JSON.stringify(previous.slice(0, 4)));
+    renderRecentSearches();
+}
+
+function renderRecentSearches() {
+    const wrap = document.querySelector("#recentSearches");
+    if (!wrap) return;
+    const items = readRecentSearches();
+    wrap.replaceChildren();
+    if (!items.length) {
+        wrap.hidden = true;
+        return;
+    }
+    wrap.hidden = false;
+    const label = document.createElement("span");
+    label.textContent = "Recent";
+    wrap.appendChild(label);
+    items.forEach((query) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = query;
+        button.addEventListener("click", () => {
+            elements.heroMedicine.value = query;
+            elements.finderInput.value = query;
+            state.query = query;
+            runHeroSearch();
+        });
+        wrap.appendChild(button);
+    });
+}
+
+let medicineCatalog = [];
+
+function suggestionMatches(query) {
+    const needle = query.trim().toLowerCase();
+    if (needle.length < 2) return [];
+    const seen = new Set();
+    const hits = [];
+    medicineCatalog.forEach((item) => {
+        const hay = `${item.brand} ${item.name} ${item.saltGroup || ""} ${item.strength}`.toLowerCase();
+        const key = `${item.brand}|${item.strength}`;
+        if (!hay.includes(needle) || seen.has(key)) return;
+        seen.add(key);
+        hits.push(item);
+    });
+    return hits.slice(0, 6);
+}
+
+function bindSuggestions(input, list, onPick) {
+    if (!input || !list) return;
+    input.addEventListener("input", () => {
+        const hits = suggestionMatches(input.value);
+        list.replaceChildren();
+        if (!hits.length) {
+            list.hidden = true;
+            return;
+        }
+        hits.forEach((item) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.innerHTML = `<strong>${item.brand}</strong><small>${item.name} · ${item.strength}</small>`;
+            button.addEventListener("click", () => {
+                input.value = item.brand;
+                list.hidden = true;
+                onPick(item);
+            });
+            list.appendChild(button);
+        });
+        list.hidden = false;
+    });
+    document.addEventListener("click", (event) => {
+        if (!list.contains(event.target) && event.target !== input) list.hidden = true;
+    });
+}
+
+async function loadMedicineCatalog() {
+    try {
+        medicineCatalog = await API.request("/api/medicines");
+    } catch {
+        medicineCatalog = [];
+    }
+}
+
+function copySearchLink() {
+    const params = new URLSearchParams();
+    const query = elements.finderInput.value.trim() || elements.heroMedicine.value.trim();
+    const location = elements.heroLocation.value.trim();
+    if (query) params.set("q", query);
+    if (location) params.set("location", location);
+    params.set("radius", String(radiusKm()));
+    const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+    navigator.clipboard?.writeText(url).then(
+        () => showToast("Search link copied."),
+        () => showToast(url)
+    );
+}
+
+function applySearchFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const query = params.get("q");
+    const location = params.get("location");
+    const radius = Number(params.get("radius"));
+    if (location && elements.heroLocation) elements.heroLocation.value = location;
+    if (query) {
+        state.query = query;
+        if (elements.heroMedicine) elements.heroMedicine.value = query;
+        if (elements.finderInput) elements.finderInput.value = query;
+    }
+    if ([5, 10, 25, 50].includes(radius)) {
+        state.radius = radius;
+        const select = document.querySelector("#radiusSelect");
+        if (select) select.value = String(radius);
+    }
+}
 function initFinder() {
+    applySearchFromUrl();
+    renderRecentSearches();
+    loadMedicineCatalog();
+    bindSuggestions(elements.heroMedicine, document.querySelector("#heroSuggest"), (item) => {
+        elements.finderInput.value = item.brand;
+        state.query = item.brand;
+        runHeroSearch();
+    });
+    bindSuggestions(elements.finderInput, document.querySelector("#finderSuggest"), (item) => {
+        elements.heroMedicine.value = item.brand;
+        state.query = item.brand;
+        loadInventory().catch((error) => showToast(error.message));
+    });
     initLiveMap();
     loadInventory().catch((error) => showToast(error.message));
 
@@ -1035,6 +1253,136 @@ function initFinder() {
             showToast("Map centered on your search location.");
         }
     });
+
+    document.querySelector("#radiusSelect")?.addEventListener("change", (event) => {
+        state.radius = Number(event.target.value) || 50;
+        loadInventory().catch((error) => showToast(error.message));
+    });
+    document.querySelector("#sortSelect")?.addEventListener("change", (event) => {
+        state.sort = event.target.value;
+        renderResults();
+    });
+    document.querySelector("#openNowButton")?.addEventListener("click", (event) => {
+        state.openNow = !state.openNow;
+        event.currentTarget.classList.toggle("active", state.openNow);
+        event.currentTarget.setAttribute("aria-pressed", state.openNow ? "true" : "false");
+        renderResults();
+    });
+    document.querySelector("#copySearchButton")?.addEventListener("click", copySearchLink);
+
+    document.addEventListener("keydown", (event) => {
+        const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName);
+        if (event.key === "/" && !event.metaKey && !event.ctrlKey && !typing) {
+            event.preventDefault();
+            document.querySelector("#finder")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            elements.finderInput?.focus();
+        }
+    });
+}
+
+function initDesk() {
+    const dialog = document.querySelector("#deskDialog");
+    const body = document.querySelector("#deskBody");
+    const button = document.querySelector("#deskNavButton");
+    if (!dialog || !body || !button) return;
+    let tab = "holds";
+
+    async function render() {
+        if (!API.user()) {
+            openAuthDialog("login");
+            return;
+        }
+        body.innerHTML = "<p>Loading…</p>";
+        try {
+            if (tab === "holds") {
+                const rows = await API.request("/api/reservations");
+                body.innerHTML = rows.length
+                    ? rows.slice(0, 8).map((item) => `
+                        <article class="desk-item">
+                            <div>
+                                <strong>${item.brand || item.medicine_name}</strong>
+                                <small>${item.pharmacy_name} · ${item.status}</small>
+                            </div>
+                            ${["requested", "confirmed"].includes(item.status) ? `<button class="filter" type="button" data-cancel-hold="${item.id}">Cancel</button>` : ""}
+                        </article>`).join("")
+                    : "<p>No holds yet. Reserve a medicine and it will appear here.</p>";
+            } else {
+                const data = await API.request(`/api/favorites?location=${encodeURIComponent(elements.heroLocation.value || "Rohtak 124001")}`);
+                const rows = data.results || [];
+                body.innerHTML = rows.length
+                    ? rows.map((item) => `
+                        <article class="desk-item">
+                            <div>
+                                <strong>${item.brand}</strong>
+                                <small>${item.pharmacy} · ${item.price} · ${item.distance.toFixed(1)} km</small>
+                            </div>
+                            <button class="filter" type="button" data-drop-save="${item.id}">Remove</button>
+                        </article>`).join("")
+                    : "<p>Nothing saved yet. Use Save on a pharmacy card.</p>";
+            }
+        } catch (error) {
+            body.innerHTML = `<p>${error.message}</p>`;
+        }
+    }
+
+    button.addEventListener("click", () => {
+        if (!API.user()) {
+            openAuthDialog("login");
+            return;
+        }
+        dialog.showModal();
+        document.body.classList.add("dialog-open");
+        render();
+    });
+    dialog.querySelectorAll("[data-desk-tab]").forEach((tabButton) => {
+        tabButton.addEventListener("click", () => {
+            tab = tabButton.dataset.deskTab;
+            dialog.querySelectorAll("[data-desk-tab]").forEach((item) => {
+                item.classList.toggle("active", item === tabButton);
+            });
+            render();
+        });
+    });
+    body.addEventListener("click", async (event) => {
+        const cancel = event.target.closest("[data-cancel-hold]");
+        const drop = event.target.closest("[data-drop-save]");
+        try {
+            if (cancel) {
+                await API.request(`/api/reservations/${cancel.dataset.cancelHold}/cancel`, { method: "POST" });
+                showToast("Hold cancelled.");
+                render();
+            }
+            if (drop) {
+                await API.request(`/api/favorites/${drop.dataset.dropSave}`, { method: "DELETE" });
+                showToast("Removed from saved medicines.");
+                render();
+            }
+        } catch (error) {
+            showToast(error.message);
+        }
+    });
+}
+
+function initMouseField() {
+    const glow = document.querySelector("#heroGlow");
+    const hero = document.querySelector(".hero");
+    const card = document.querySelector(".status-card-main");
+    if (!glow || !hero || !window.matchMedia("(pointer: fine)").matches) return;
+    hero.addEventListener("pointermove", (event) => {
+        const rect = hero.getBoundingClientRect();
+        const x = (event.clientX - rect.left) / rect.width - 0.5;
+        const y = (event.clientY - rect.top) / rect.height - 0.5;
+        glow.style.left = `${event.clientX - rect.left}px`;
+        glow.style.top = `${event.clientY - rect.top}px`;
+        glow.style.opacity = "1";
+        if (card && (!window.NivraMotion || window.NivraMotion.enabled())) {
+            card.style.transform = `translate(${x * 14}px, ${y * 10}px)`;
+        }
+    });
+    hero.addEventListener("pointerleave", () => {
+        glow.style.opacity = "0.35";
+        if (card) card.style.transform = "";
+    });
 }
 
 function initDialogs() {
@@ -1046,7 +1394,7 @@ function initDialogs() {
         button.addEventListener("click", () => closeDialog(button.closest("dialog")));
     });
 
-    [elements.reservationDialog, elements.emergencyDialog, elements.ownerDialog, elements.authDialog]
+    [elements.reservationDialog, elements.emergencyDialog, elements.ownerDialog, elements.authDialog, document.querySelector("#deskDialog")]
         .filter(Boolean)
         .forEach((dialog) => {
             dialog.addEventListener("click", (event) => {
@@ -1131,6 +1479,8 @@ function updateAuthNav() {
         if (elements.adminNavLink) elements.adminNavLink.hidden = true;
         if (elements.ownerNavLink) elements.ownerNavLink.hidden = true;
     }
+    const deskButton = document.querySelector("#deskNavButton");
+    if (deskButton) deskButton.hidden = !user;
 }
 
 function setAuthMode(mode) {
@@ -1383,10 +1733,7 @@ function initMotionControls() {
         const on = window.NivraMotion.toggle();
         syncMotionToggle();
         showToast(on ? "Animations enabled." : "Animations paused.");
-        if (on) {
-            // Re-run entrance motion after enabling.
-            window.location.reload();
-        }
+        window.setTimeout(() => window.location.reload(), 180);
     });
 }
 
@@ -1438,20 +1785,6 @@ function initMotion() {
             stagger: 0.11,
             ease: "power3.out",
             delay: 0.2,
-        }
-    );
-
-    gsap.fromTo(
-        ".floating-chip",
-        { y: 24, opacity: 0, scale: 0.92 },
-        {
-            y: 0,
-            opacity: 1,
-            scale: 1,
-            duration: 0.9,
-            stagger: 0.12,
-            ease: "power3.out",
-            delay: 0.55,
         }
     );
 
@@ -1517,32 +1850,8 @@ function initMotion() {
         );
     });
 
-    gsap.to(".hero-marquee", {
-        rotation: 1.4,
-        ease: "none",
-        scrollTrigger: {
-            trigger: ".hero",
-            start: "top top",
-            end: "bottom top",
-            scrub: true,
-        },
-    });
-
-    gsap.to(".process-core", {
-        scale: 1.1,
-        boxShadow: "0 0 0 38px rgba(255,255,255,.09), 0 30px 80px rgba(30,10,75,.36)",
-        ease: "sine.inOut",
-        scrollTrigger: {
-            trigger: ".process-stage",
-            start: "top 70%",
-            end: "bottom 45%",
-            scrub: true,
-        },
-    });
-
     gsap.to(".hero-copy", {
-        yPercent: 16,
-        opacity: 0.4,
+        y: 36,
         ease: "none",
         scrollTrigger: {
             trigger: ".hero",
@@ -1551,68 +1860,59 @@ function initMotion() {
             scrub: true,
         },
     });
-
-    gsap.to(".hero-glow", {
-        scale: 1.18,
-        opacity: 0.85,
-        ease: "none",
-        scrollTrigger: {
-            trigger: ".hero",
-            start: "top top",
-            end: "bottom top",
-            scrub: true,
-        },
-    });
-
-    if (document.querySelector(".status-card-main")) {
-        gsap.to(".status-card-main", {
-            y: -18,
-            ease: "none",
-            scrollTrigger: {
-                trigger: ".hero",
-                start: "top top",
-                end: "bottom top",
-                scrub: true,
-            },
-        });
-    }
 }
 
 function initCursor() {
     if (!window.matchMedia("(pointer: fine)").matches) return;
+    if (window.NivraMotion && !window.NivraMotion.enabled()) return;
     const cursor = document.querySelector(".cursor-dot");
     const aura = document.querySelector(".cursor-aura");
     if (!cursor || !aura) return;
+    document.body.classList.add("cursor-on");
     let mouseX = window.innerWidth / 2;
     let mouseY = window.innerHeight / 2;
     let auraX = mouseX;
     let auraY = mouseY;
+    const trails = Array.from({ length: 5 }, () => {
+        const dot = document.createElement("span");
+        dot.className = "cursor-trail";
+        document.body.appendChild(dot);
+        return { el: dot, x: mouseX, y: mouseY };
+    });
 
     window.addEventListener("pointermove", (event) => {
         mouseX = event.clientX;
         mouseY = event.clientY;
         cursor.style.left = `${event.clientX}px`;
         cursor.style.top = `${event.clientY}px`;
+        const hit = event.target.closest?.("a, button, input, select, textarea, .pharmacy-card, .guide-card");
+        cursor.classList.toggle("active", Boolean(hit));
+        aura.classList.toggle("active", Boolean(hit));
     }, { passive: true });
 
     function followAura() {
-        auraX += (mouseX - auraX) * 0.11;
-        auraY += (mouseY - auraY) * 0.11;
+        auraX += (mouseX - auraX) * 0.14;
+        auraY += (mouseY - auraY) * 0.14;
         aura.style.left = `${auraX}px`;
         aura.style.top = `${auraY}px`;
+        let leadX = mouseX;
+        let leadY = mouseY;
+        trails.forEach((trail, index) => {
+            const ease = 0.28 - index * 0.03;
+            trail.x += (leadX - trail.x) * ease;
+            trail.y += (leadY - trail.y) * ease;
+            trail.el.style.left = `${trail.x}px`;
+            trail.el.style.top = `${trail.y}px`;
+            leadX = trail.x;
+            leadY = trail.y;
+        });
         requestAnimationFrame(followAura);
     }
     followAura();
-
-    document.querySelectorAll("a, button, input, select, textarea, .pharmacy-card").forEach((element) => {
-        element.addEventListener("mouseenter", () => cursor.classList.add("active"));
-        element.addEventListener("mouseleave", () => cursor.classList.remove("active"));
-    });
 }
 
 const spotlightElements = new WeakSet();
 function initSpotlight(element) {
-    return;
     if (!element || spotlightElements.has(element)) return;
     spotlightElements.add(element);
     element.addEventListener("pointermove", (event) => {
@@ -1623,17 +1923,19 @@ function initSpotlight(element) {
 }
 
 function initTiltCards() {
-    return;
     if (!window.matchMedia("(pointer: fine)").matches) return;
+    if (window.NivraMotion && !window.NivraMotion.enabled()) return;
     document.querySelectorAll(".guide-card").forEach((card) => {
         card.addEventListener("pointermove", (event) => {
             const rect = card.getBoundingClientRect();
             const x = (event.clientX - rect.left) / rect.width - 0.5;
             const y = (event.clientY - rect.top) / rect.height - 0.5;
+            card.style.transition = "none";
             card.style.transform =
                 `perspective(900px) rotateX(${-y * 5}deg) rotateY(${x * 6}deg) translateY(-4px)`;
         });
         card.addEventListener("pointerleave", () => {
+            card.style.transition = "transform 0.45s var(--ease)";
             card.style.transform = "";
         });
     });
@@ -1641,7 +1943,6 @@ function initTiltCards() {
 
 const rippleElements = new WeakSet();
 function initRipple(element) {
-    return;
     if (!element || rippleElements.has(element)) return;
     rippleElements.add(element);
     element.style.position ||= "relative";
@@ -1670,6 +1971,7 @@ function initSurfaceEffects() {
 
 function initScrollProgress() {
     const progress = document.querySelector("#scrollProgress");
+    if (!progress) return;
     function update() {
         const max = document.documentElement.scrollHeight - window.innerHeight;
         const ratio = max > 0 ? Math.min(window.scrollY / max, 1) : 0;
@@ -1756,6 +2058,8 @@ function boot() {
     initVoiceSearch();
     initOwnerPortal();
     initDialogs();
+    initDesk();
+    initMouseField();
     initCounters();
     initActivityFeed();
     initFeedback();

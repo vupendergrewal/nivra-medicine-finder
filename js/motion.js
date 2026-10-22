@@ -13,7 +13,8 @@ window.NivraMotion = (function createMotionPref() {
         const value = stored();
         if (value === "on") return true;
         if (value === "off") return false;
-        return false;
+        if (systemPrefersReduce()) return false;
+        return true;
     }
 
     function apply() {

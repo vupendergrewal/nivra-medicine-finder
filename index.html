@@ -13,7 +13,17 @@
     <link rel="stylesheet" href="css/styles.css">
     <script src="js/motion.js"></script>
 </head>
-<body>
+<body class="loading">
+    <div class="page-loader" id="pageLoader" aria-hidden="true">
+        <div class="loader-copy">
+            <span>Nivra</span>
+            <small>Medicine finder</small>
+        </div>
+        <div class="loader-track"><span id="loaderProgress"></span></div>
+        <strong class="loader-percent" id="loaderPercent">0%</strong>
+    </div>
+    <div class="cursor-dot" aria-hidden="true"></div>
+    <div class="cursor-aura" aria-hidden="true"></div>
     <div class="scroll-progress" aria-hidden="true">
         <span id="scrollProgress"></span>
     </div>
@@ -40,11 +50,12 @@
                 <a href="#safety">Medicine guide</a>
                 <button class="nav-owner" type="button" data-open-auth="login" id="authNavButton">Sign in</button>
                 <button class="nav-create" type="button" data-open-auth="register" id="createAccountNav">Create account</button>
+                <button class="nav-create" type="button" id="deskNavButton" hidden>My desk</button>
                 <button class="nav-owner" type="button" data-open-owner>List your pharmacy</button>
                 <button class="nav-motion" type="button" id="motionToggle" aria-pressed="true" title="Toggle animations">Motion on</button>
                 <a class="nav-owner" id="ownerNavLink" href="/owner" hidden>Owner desk</a>
                 <a class="nav-owner" id="adminNavLink" href="/admin" hidden>Admin desk</a>
-                <button class="nav-urgent" type="button" data-open-emergency>
+                <button class="nav-urgent magnetic" type="button" data-open-emergency>
                     <span class="status-dot"></span>
                     Urgent request
                 </button>
@@ -54,6 +65,7 @@
 
     <main id="top">
         <section class="hero">
+            <div class="hero-glow" id="heroGlow" aria-hidden="true"></div>
             <div class="shell hero-grid">
                 <div class="hero-copy">
                     <p class="eyebrow hero-reveal">
@@ -82,6 +94,7 @@
                                 </svg>
                                 <span class="voice-wave"><i></i><i></i><i></i></span>
                             </button>
+                            <div class="suggest-list" id="heroSuggest" hidden></div>
                         </div>
                         <div class="search-field location-field">
                             <label for="heroLocation">Area or PIN code</label>
@@ -107,6 +120,9 @@
                         <button type="button" data-quick-search="Insulin Glargine">Insulin</button>
                         <button type="button" data-quick-search="Adrenaline">Adrenaline</button>
                         <button type="button" data-quick-search="Osimertinib">Cancer care</button>
+                    </div>
+                    <div class="quick-search recent-searches hero-reveal" id="recentSearches" hidden>
+                        <span>Recent</span>
                     </div>
                 </div>
 
@@ -266,7 +282,7 @@
                         <p class="section-index">Inventory</p>
                         <h2>Available near <span id="finderArea">Rohtak</span></h2>
                     </div>
-                    <p>Sample live inventory. Choose a medicine, distance, or availability state.</p>
+                    <p>Live inventory. Sort by distance or price, narrow the radius, and open directions before you travel.</p>
                 </div>
 
                 <div class="finder-toolbar reveal">
@@ -275,7 +291,8 @@
                             <circle cx="11" cy="11" r="7"></circle>
                             <path d="m16 16 4 4"></path>
                         </svg>
-                        <input id="finderInput" type="search" placeholder="Search medicine, brand, or salt">
+                        <input id="finderInput" type="search" placeholder="Search medicine, brand, or salt" autocomplete="off">
+                        <div class="suggest-list suggest-list-finder" id="finderSuggest" hidden></div>
                     </div>
                     <div class="filter-group" aria-label="Availability filters">
                         <button class="filter active" type="button" data-filter="all">All</button>
@@ -284,6 +301,28 @@
                         <button class="filter" type="button" data-filter="cold-chain">Cold chain</button>
                     </div>
                 </div>
+                <div class="finder-tools reveal">
+                    <label>
+                        Radius
+                        <select id="radiusSelect">
+                            <option value="5">5 km</option>
+                            <option value="10">10 km</option>
+                            <option value="25">25 km</option>
+                            <option value="50" selected>50 km</option>
+                        </select>
+                    </label>
+                    <label>
+                        Sort
+                        <select id="sortSelect">
+                            <option value="distance">Nearest</option>
+                            <option value="price">Lowest price</option>
+                            <option value="match">Best match</option>
+                        </select>
+                    </label>
+                    <button class="filter" type="button" id="openNowButton" aria-pressed="false">Open now</button>
+                    <button class="filter" type="button" id="copySearchButton">Copy search link</button>
+                </div>
+                <div class="insight-row reveal" id="insightRow"></div>
 
                 <div class="results-layout">
                     <div class="pharmacy-results reveal" id="pharmacyResults" aria-live="polite"></div>
@@ -715,6 +754,20 @@
                 </section>
             </div>
         </form>
+    </dialog>
+
+    <dialog class="reservation-dialog" id="deskDialog">
+        <div class="dialog-shell">
+            <button class="dialog-close" type="button" data-close-dialog aria-label="Close">×</button>
+            <p class="section-index">YOUR NIVRA DESK</p>
+            <h2 id="deskTitle">Saved and reserved</h2>
+            <p>Holds you requested, and medicines you saved for later.</p>
+            <div class="auth-mode" role="tablist">
+                <button class="filter active" type="button" data-desk-tab="holds">Holds</button>
+                <button class="filter" type="button" data-desk-tab="saved">Saved</button>
+            </div>
+            <div id="deskBody" class="desk-body"></div>
+        </div>
     </dialog>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
