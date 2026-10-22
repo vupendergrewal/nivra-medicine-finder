@@ -2207,6 +2207,130 @@ body.reduce-motion .live-badge i {
     animation: none;
 }
 
+body.reduce-motion .hero-orb,
+body.reduce-motion .hero-sheen,
+html.reduce-motion .hero-orb,
+html.reduce-motion .hero-sheen {
+    animation: none;
+}
+
+.ambient-video {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    background: #efece4;
+}
+
+.ambient-video video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.ambient-video::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(247, 245, 240, 0.28), rgba(243, 241, 235, 0.4));
+}
+
+.ambient-video-desk::after {
+    background: linear-gradient(160deg, rgba(214, 228, 220, 0.18), rgba(198, 216, 206, 0.34));
+}
+
+.ambient-video-owner::after {
+    background: linear-gradient(160deg, rgba(244, 232, 214, 0.16), rgba(232, 214, 188, 0.32));
+}
+
+main,
+.site-footer,
+.admin-wrap {
+    position: relative;
+    z-index: 1;
+}
+
+.hero-field {
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    background: #f3f1eb;
+}
+
+.hero-field canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.hero-orb,
+.hero-sheen {
+    position: absolute;
+    pointer-events: none;
+}
+
+.hero-orb {
+    border-radius: 50%;
+    filter: blur(18px);
+}
+
+.hero-orb-a {
+    width: 46vw;
+    height: 46vw;
+    left: -10%;
+    top: -22%;
+    background: radial-gradient(circle, rgba(47, 122, 90, 0.34), transparent 68%);
+    animation: hero-orb-a 24s ease-in-out infinite;
+}
+
+.hero-orb-b {
+    width: 34vw;
+    height: 34vw;
+    right: -6%;
+    top: 8%;
+    background: radial-gradient(circle, rgba(196, 164, 96, 0.28), transparent 70%);
+    animation: hero-orb-b 18s ease-in-out infinite;
+}
+
+.hero-orb-c {
+    width: 40vw;
+    height: 40vw;
+    left: 28%;
+    bottom: -28%;
+    background: radial-gradient(circle, rgba(20, 56, 45, 0.16), transparent 70%);
+    animation: hero-orb-c 28s ease-in-out infinite;
+}
+
+.hero-sheen {
+    inset: -30% -10%;
+    background: linear-gradient(115deg, transparent 38%, rgba(255, 252, 247, 0.45) 50%, transparent 62%);
+    animation: hero-sheen 16s ease-in-out infinite;
+}
+
+@keyframes hero-orb-a {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+    50% { transform: translate3d(10%, 14%, 0) scale(1.12); }
+}
+
+@keyframes hero-orb-b {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+    50% { transform: translate3d(-12%, 10%, 0) scale(1.08); }
+}
+
+@keyframes hero-orb-c {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+    50% { transform: translate3d(8%, -12%, 0) scale(1.16); }
+}
+
+@keyframes hero-sheen {
+    0%, 100% { transform: translateX(-12%); }
+    50% { transform: translateX(12%); }
+}
+
 @media (max-width: 820px) {
     .insight-row {
         grid-template-columns: 1fr;
@@ -2224,7 +2348,9 @@ body.reduce-motion .live-badge i {
     }
 
     .voice-wave i,
-    .live-badge i {
+    .live-badge i,
+    .hero-orb,
+    .hero-sheen {
         animation: none;
     }
 

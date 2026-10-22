@@ -27,6 +27,9 @@
     <div class="scroll-progress" aria-hidden="true">
         <span id="scrollProgress"></span>
     </div>
+    <div class="ambient-video" aria-hidden="true">
+        <video data-ambient autoplay muted loop playsinline preload="auto" src="media/section-light.mp4"></video>
+    </div>
 
     <header class="site-header">
         <nav class="nav shell">
@@ -65,6 +68,13 @@
 
     <main id="top">
         <section class="hero">
+            <div class="hero-field" aria-hidden="true">
+                <canvas id="heroCanvas"></canvas>
+                <span class="hero-orb hero-orb-a"></span>
+                <span class="hero-orb hero-orb-b"></span>
+                <span class="hero-orb hero-orb-c"></span>
+                <span class="hero-sheen"></span>
+            </div>
             <div class="hero-glow" id="heroGlow" aria-hidden="true"></div>
             <div class="shell hero-grid">
                 <div class="hero-copy">
@@ -776,6 +786,7 @@
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="js/motion.js"></script>
+    <script src="js/ambient.js"></script>
     <script src="js/map.js"></script>
     <script src="js/app.js"></script>
     <script>
