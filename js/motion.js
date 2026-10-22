@@ -13,8 +13,7 @@ window.NivraMotion = (function createMotionPref() {
         const value = stored();
         if (value === "on") return true;
         if (value === "off") return false;
-        // Demo default: keep motion on so the site feels alive.
-        return true;
+        return false;
     }
 
     function apply() {

@@ -4,36 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Nivra helps people find verified medicine availability nearby, compare alternatives, and reserve urgent stock.">
-    <meta name="theme-color" content="#18151e">
-    <title>Nivra — Find the medicine. Not another dead end.</title>
+    <meta name="theme-color" content="#10241e">
+    <title>Nivra — Verified medicine, nearby</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,500;0,8..60,600;1,8..60,500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="css/styles.css">
     <script src="js/motion.js"></script>
 </head>
 <body>
-    <div class="page-loader" id="pageLoader" aria-hidden="true">
-        <div class="loader-mark">
-            <span class="loader-capsule loader-capsule-left"></span>
-            <span class="loader-capsule loader-capsule-right"></span>
-        </div>
-        <div class="loader-copy">
-            <span>Nivra</span>
-            <small>Locating certainty</small>
-        </div>
-        <div class="loader-track"><span id="loaderProgress"></span></div>
-        <strong class="loader-percent" id="loaderPercent">0%</strong>
-    </div>
-
     <div class="scroll-progress" aria-hidden="true">
         <span id="scrollProgress"></span>
     </div>
-
-    <div class="cursor-dot" aria-hidden="true"></div>
-    <div class="cursor-aura" aria-hidden="true"></div>
-    <div class="noise" aria-hidden="true"></div>
 
     <header class="site-header">
         <nav class="nav shell">
@@ -46,6 +29,7 @@
             </a>
 
             <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+                <span></span>
                 <span></span>
                 <span></span>
             </button>
@@ -70,22 +54,19 @@
 
     <main id="top">
         <section class="hero">
-            <canvas id="medicineScene" aria-hidden="true"></canvas>
-            <div class="hero-glow" aria-hidden="true"></div>
-
             <div class="shell hero-grid">
                 <div class="hero-copy">
                     <p class="eyebrow hero-reveal">
                         <span class="status-dot"></span>
-                        Live medicine discovery
+                        Licensed pharmacy network
                     </p>
                     <h1 class="hero-reveal">
-                        Find the medicine.
-                        <em>Not another dead end.</em>
+                        Know which pharmacy has it.
+                        <em>Before you leave home.</em>
                     </h1>
                     <p class="hero-lede hero-reveal">
-                        Search verified stock nearby, compare safe generic alternatives,
-                        and reserve critical medicines before you leave home.
+                        Search verified stock nearby, compare same-salt alternatives,
+                        and reserve a pack with a clear verification time.
                     </p>
 
                     <form class="hero-search hero-reveal" id="heroSearch">
@@ -132,19 +113,10 @@
                 <aside class="hero-status hero-reveal" aria-label="Live network status">
                     <div class="status-card status-card-main">
                         <div class="status-card-head">
-                            <span>Live network pulse</span>
+                            <span>Today’s network</span>
                             <span class="live-badge"><i></i> Live</span>
                         </div>
-                        <div class="pulse-map" aria-hidden="true">
-                            <span class="map-line map-line-one"></span>
-                            <span class="map-line map-line-two"></span>
-                            <span class="map-line map-line-three"></span>
-                            <i class="map-node node-one"></i>
-                            <i class="map-node node-two"></i>
-                            <i class="map-node node-three"></i>
-                            <i class="map-node node-four"></i>
-                            <span class="pulse-core"></span>
-                        </div>
+                        <p class="status-lead">Counts update from pharmacies currently publishing stock.</p>
                         <div class="network-metrics">
                             <div>
                                 <strong data-counter="6" data-format="number">0</strong>
@@ -152,39 +124,22 @@
                             </div>
                             <div>
                                 <strong data-counter="96" data-format="percent">0</strong>
-                                <span>Stock verified today</span>
+                                <span>Stock checked today</span>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="floating-chip chip-verified">
-                        <span class="chip-icon">✓</span>
-                        <span><small>Last verified</small>2 minutes ago</span>
-                    </div>
-                    <div class="floating-chip chip-distance">
-                        <span class="chip-icon">↗</span>
-                        <span><small>Nearest match</small>1.4 km away</span>
+                        <ul class="status-points">
+                            <li>Nearest match shown with distance</li>
+                            <li>Cold-chain items marked before travel</li>
+                            <li>Reservations wait for pharmacist confirmation</li>
+                        </ul>
                     </div>
                 </aside>
-            </div>
-
-            <div class="hero-marquee" aria-hidden="true">
-                <div class="marquee-track">
-                    <span>Verified availability</span><i></i>
-                    <span>Generic alternatives</span><i></i>
-                    <span>Cold-chain visibility</span><i></i>
-                    <span>Reserve before travel</span><i></i>
-                    <span>Verified availability</span><i></i>
-                    <span>Generic alternatives</span><i></i>
-                    <span>Cold-chain visibility</span><i></i>
-                    <span>Reserve before travel</span><i></i>
-                </div>
             </div>
         </section>
 
         <section class="problem-statement section-pad">
             <div class="shell statement-grid">
-                <p class="section-index reveal">01 / THE PROBLEM</p>
+                <p class="section-index reveal">The problem</p>
                 <div class="statement-copy">
                     <h2 class="reveal">
                         A prescription should not become
@@ -217,8 +172,8 @@
             <div class="shell">
                 <div class="section-heading reveal">
                     <div>
-                        <p class="section-index">02 / RX LENS</p>
-                        <h2>Let the prescription <span class="serif-accent">speak.</span></h2>
+                        <p class="section-index">Prescription</p>
+                        <h2>Read a prescription into a search.</h2>
                     </div>
                     <p>Upload a prescription image. Rx Lens reads printed text locally and turns detected medicines into searchable chips.</p>
                 </div>
@@ -308,7 +263,7 @@
             <div class="shell">
                 <div class="section-heading reveal">
                     <div>
-                        <p class="section-index">03 / LIVE FINDER</p>
+                        <p class="section-index">Inventory</p>
                         <h2>Available near <span id="finderArea">Rohtak</span></h2>
                     </div>
                     <p>Sample live inventory. Choose a medicine, distance, or availability state.</p>
@@ -357,30 +312,12 @@
             <div class="shell">
                 <div class="section-heading reveal">
                     <div>
-                        <p class="section-index">04 / THE FLOW</p>
-                        <h2>Search. Verify. <span class="serif-accent">Breathe.</span></h2>
+                        <p class="section-index">How it works</p>
+                        <h2>Search. Confirm. Reserve.</h2>
                     </div>
                 </div>
 
-                <div class="process-stage">
-                    <div class="process-visual reveal" aria-hidden="true">
-                        <div class="orbit orbit-outer">
-                            <span class="orbit-dot dot-one"></span>
-                            <span class="orbit-dot dot-two"></span>
-                        </div>
-                        <div class="orbit orbit-inner">
-                            <span class="orbit-dot dot-three"></span>
-                        </div>
-                        <div class="process-core">
-                            <span>N</span>
-                        </div>
-                        <div class="process-caption">
-                            <small>Current step</small>
-                            <strong id="processCaption">Search precisely</strong>
-                        </div>
-                    </div>
-
-                    <div class="process-list">
+                <div class="process-list">
                         <article class="process-step active reveal" data-process="Search precisely">
                             <span>01</span>
                             <div>
@@ -403,7 +340,6 @@
                             </div>
                         </article>
                     </div>
-                </div>
             </div>
         </section>
 
@@ -411,7 +347,7 @@
             <div class="shell">
                 <div class="section-heading reveal">
                     <div>
-                        <p class="section-index">05 / MEDICINE INTELLIGENCE</p>
+                        <p class="section-index">Medicine guide</p>
                         <h2>More than a stock signal.</h2>
                     </div>
                     <p>Understand alternatives, storage, and essential cautions before choosing a pharmacy.</p>
@@ -467,8 +403,8 @@
         <section class="urgent section-pad">
             <div class="shell urgent-card reveal">
                 <div class="urgent-copy">
-                    <p class="section-index">CAN'T FIND IT?</p>
-                    <h2>Send one request.<br><span class="serif-accent">Reach the network.</span></h2>
+                    <p class="section-index">Urgent request</p>
+                    <h2>One request to the nearby network.</h2>
                     <p>
                         Broadcast an urgent medicine request to verified stores in your selected radius.
                         You stay in control of which contact details are shared.
@@ -486,8 +422,8 @@
         <section class="feedback section-pad" id="feedback">
             <div class="shell feedback-grid reveal">
                 <div>
-                    <p class="section-index">SHARE FEEDBACK</p>
-                    <h2>Tell Nivra what still feels hard.</h2>
+                    <p class="section-index">Feedback</p>
+                    <h2>Tell us what still feels hard.</h2>
                     <p>Your note helps improve search, verification, and urgent coverage for the next demo.</p>
                 </div>
                 <form class="feedback-form" id="feedbackForm">
@@ -505,7 +441,7 @@
 
         <section class="trust section-pad">
             <div class="shell">
-                <p class="section-index reveal">DESIGNED FOR THE MOMENT THAT MATTERS</p>
+                <p class="section-index reveal">Built for the moment that matters</p>
                 <div class="trust-line reveal">
                     <span>Verified timestamps</span>
                     <i></i>
@@ -785,11 +721,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
     <script src="js/motion.js"></script>
-    <script src="js/scene.js"></script>
     <script src="js/map.js"></script>
     <script src="js/app.js"></script>
     <script>

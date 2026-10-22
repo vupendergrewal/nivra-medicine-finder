@@ -68,10 +68,9 @@ window.NivraMap = (function createNivraMap() {
             scrollWheelZoom: false,
         }).setView(DEFAULT_CENTER, 12);
 
-        L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-            maxZoom: 18,
-            attribution:
-                '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         }).addTo(map);
 
         markerLayer = L.layerGroup().addTo(map);
@@ -79,9 +78,9 @@ window.NivraMap = (function createNivraMap() {
         userMarker.bindPopup("<strong>Your search location</strong>");
         radiusCircle = L.circle(DEFAULT_CENTER, {
             radius: 10000,
-            color: "#8655ee",
+            color: "#14382d",
             weight: 1.5,
-            fillColor: "#8655ee",
+            fillColor: "#14382d",
             fillOpacity: 0.12,
         }).addTo(map);
 

@@ -1260,7 +1260,7 @@ function initProcess() {
         step.addEventListener("mouseenter", () => {
             steps.forEach((item) => item.classList.remove("active"));
             step.classList.add("active");
-            caption.textContent = step.dataset.process;
+            if (caption) caption.textContent = step.dataset.process;
         });
 
         if (typeof ScrollTrigger !== "undefined") {
@@ -1272,7 +1272,7 @@ function initProcess() {
                     if (!self.isActive) return;
                     steps.forEach((item) => item.classList.remove("active"));
                     step.classList.add("active");
-                    caption.textContent = step.dataset.process;
+                    if (caption) caption.textContent = step.dataset.process;
                 },
             });
         }
@@ -1612,6 +1612,7 @@ function initCursor() {
 
 const spotlightElements = new WeakSet();
 function initSpotlight(element) {
+    return;
     if (!element || spotlightElements.has(element)) return;
     spotlightElements.add(element);
     element.addEventListener("pointermove", (event) => {
@@ -1622,6 +1623,7 @@ function initSpotlight(element) {
 }
 
 function initTiltCards() {
+    return;
     if (!window.matchMedia("(pointer: fine)").matches) return;
     document.querySelectorAll(".guide-card").forEach((card) => {
         card.addEventListener("pointermove", (event) => {
@@ -1639,6 +1641,7 @@ function initTiltCards() {
 
 const rippleElements = new WeakSet();
 function initRipple(element) {
+    return;
     if (!element || rippleElements.has(element)) return;
     rippleElements.add(element);
     element.style.position ||= "relative";
